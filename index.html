@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>DR400/160 — Instructeur</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DR400 Instructeur">
+<meta name="theme-color" content="#0f1d35">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<style>
+:root{
+  --bg:#0f1d35;
+  --bg-2:#16264a;
+  --bg-3:#1d3056;
+  --border:#2a3f6b;
+  --border-2:#3a5285;
+  --text:#e8ecf3;
+  --text-dim:#9aa8c2;
+  --accent:#d9808a;
+  --accent-2:#eba3ac;
+  --val:#ffd166;
+  --ok:#4ade80;
+  --ok-bg:#0e3320;
+  --warn:#fbbf24;
+  --warn-bg:#3a2a08;
+  --bad:#f87171;
+  --bad-bg:#3a1414;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;-webkit-text-size-adjust:100%}
+header{background:linear-gradient(180deg,#16264a 0%,#0f1d35 100%);padding:12px;text-align:center;border-bottom:2px solid var(--accent);position:sticky;top:0;z-index:10;box-shadow:0 2px 10px rgba(0,0,0,0.3)}
+header .title{font-size:18px;color:var(--accent);font-weight:700;letter-spacing:1px}
+header .sub{font-size:11px;color:var(--text-dim);margin-top:3px;letter-spacing:0.5px}
+.tabs{display:flex;background:#0a1628;border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{flex:0 0 auto;padding:12px 14px;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;color:var(--text-dim);white-space:nowrap;font-weight:600;letter-spacing:0.3px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--bg-2)}
+.page{display:none;padding:12px}
+.page.active{display:block}
+fieldset{border:1px solid var(--border);border-radius:10px;margin:0 0 12px;padding:10px 12px 8px;background:var(--bg-2);box-shadow:0 2px 6px rgba(0,0,0,0.2)}
+legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:8px;margin:5px 0;min-height:34px;padding:2px 0;border-bottom:1px solid rgba(58,82,133,0.2)}
+.row:last-child{border-bottom:none}
+.row label{flex:1;font-size:13px;color:var(--text);line-height:1.3}
+.row input{width:85px;background:#0a1628;border:1px solid var(--border-2);border-radius:6px;color:var(--val);padding:6px 8px;font-size:14px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.row input:focus{outline:none;border-color:var(--accent);background:#1a2540;box-shadow:0 0 0 2px rgba(217,128,138,0.25)}
+.row input[readonly]{color:var(--text-dim);background:#0a1220;border-style:dashed}
+.row .unit{width:34px;color:var(--text-dim);font-size:12px;text-align:left;font-weight:500}
+.row .ref{color:var(--accent-2);font-size:14px;text-align:right;width:85px;font-variant-numeric:tabular-nums;font-weight:600;padding-right:8px}
+.btn{margin:10px 0 6px;padding:13px;border-radius:8px;border:none;background:var(--accent);color:#0a1628;font-weight:700;font-size:14px;width:100%;cursor:pointer;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(217,128,138,0.3)}
+.btn:active{background:var(--accent-2);transform:translateY(1px)}
+.result{margin-top:10px;padding:12px;border-radius:8px;background:var(--bg-2);border:1px solid var(--border);font-size:13px;line-height:1.6}
+.result .big{font-size:24px;font-weight:700;display:block;margin:6px 0;font-variant-numeric:tabular-nums;letter-spacing:0.5px}
+.notes{font-size:11px;color:var(--text-dim);line-height:1.6;padding:10px 12px;background:rgba(10,22,40,0.5);border-radius:8px;border:1px dashed var(--border);margin-top:10px}
+.notes b{color:var(--accent-2)}
+.section-title{font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px;font-weight:700;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.kvline{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px dotted rgba(58,82,133,0.3);font-size:13px}
+.kvline:last-child{border:0}
+.kvline .k{color:var(--text-dim)}
+.kvline .v{color:var(--val);font-variant-numeric:tabular-nums;font-weight:700}
+.banner-ok{background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok);padding:10px;border-radius:8px;margin-bottom:8px;font-size:13px;text-align:center;font-weight:600}
+.banner-warn{background:var(--warn-bg);border:1px solid var(--warn);color:var(--warn);padding:10px;border-radius:8px;margin-bottom:8px;font-size:12px;text-align:center}
+.banner-bad{background:var(--bad-bg);border:1px solid var(--bad);color:var(--bad);padding:10px;border-radius:8px;margin-bottom:8px;font-size:13px;text-align:center;font-weight:700}
+.shared-box{background:var(--bg-3);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;margin:0 0 12px}
+.shared-box .lbl{font-size:10px;color:var(--accent-2);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px}
+.btn-mini{flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-2);background:#0a1628;color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s}
+.btn-mini:active{background:var(--bg-3);color:var(--accent);border-color:var(--accent)}
+.runway-toggle{display:flex;gap:8px;margin:5px 0}
+.runway-toggle label{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border:2px solid var(--border-2);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;background:#0a1628;color:var(--text-dim);transition:all 0.15s}
+.runway-toggle input[type="radio"]{display:none}
+.runway-toggle input[type="radio"]:checked + span{color:var(--accent)}
+.runway-toggle label:has(input:checked){border-color:var(--accent);background:var(--bg-3);color:var(--accent);box-shadow:0 0 0 2px rgba(217,128,138,0.15)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">DR400/160 — Instructeur</div>
+  <div class="sub">Outils complémentaires DR400/160 — usage instructeur</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-page="p1">1·Partagé</div>
+  <div class="tab" data-page="p2">2·Vitesses</div>
+  <div class="tab" data-page="p3">3·Tour piste</div>
+  <div class="tab" data-page="p5">4·ROC densité</div>
+  <div class="tab" data-page="p6">5·Altitudes</div>
+</div>
+
+<!-- ONGLET 1 : squelette, en attente des futurs outils -->
+<div id="p1" class="page active">
+
+  <fieldset>
+    <legend>⚙️ Données de vol (saisie manuelle)</legend>
+    <div class="shared-box">
+      <div class="lbl">QNH</div>
+      <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+        <input id="shared_qnh" type="number" step="1" placeholder="—" style="width:110px">
+        <span class="unit">hPa</span>
+      </div>
+    </div>
+    <div class="shared-box">
+      <div class="lbl">OAT (terrain)</div>
+      <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+        <input id="shared_oat" type="number" step="1" placeholder="—" style="width:110px">
+        <span class="unit">°C</span>
+      </div>
+    </div>
+    <div class="shared-box">
+      <div class="lbl">Masse totale</div>
+      <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+        <input id="shared_masse" type="number" step="0.1" placeholder="—" style="width:110px">
+        <span class="unit">kg</span>
+      </div>
+    </div>
+    <div class="shared-box">
+      <div class="lbl">Altitude obstacle (onglet Altitudes)</div>
+      <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+        <input id="shared_obstacle" type="number" step="10" placeholder="—" style="width:110px">
+        <span class="unit">ft</span>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⚖️ Mode de saisie de la masse</legend>
+    <div class="runway-toggle" style="margin:0">
+      <label><input type="radio" name="M_MODE" value="simple" checked><span>Simple</span></label>
+      <label><input type="radio" name="M_MODE" value="detail"><span>Détaillée</span></label>
+    </div>
+  </fieldset>
+
+  <fieldset id="fieldset_detail_masse" style="display:none">
+    <legend>⚖️ Détail de la masse</legend>
+    <div class="notes" style="margin-top:0">La masse totale ci-dessus se recalcule automatiquement dès qu'un poste change ci-dessous (densité essence 0,72 kg/L).</div>
+    <div class="row"><label>Masse à vide (MVIDE)</label><input id="B_MVIDE" type="number" step="0.1" placeholder="—"><span class="unit">kg</span></div>
+    <div class="row"><label>Masse pilote (MPIL)</label><input id="B_MPIL" type="number" step="1" placeholder="—"><span class="unit">kg</span></div>
+    <div class="row"><label>Passager avant (MPAX_AV)</label><input id="B_MPAX_AV" type="number" step="1" placeholder="—"><span class="unit">kg</span></div>
+    <div class="row"><label>Pax arrière gauche (MPAX_ARG)</label><input id="B_MPAX_ARG" type="number" step="1" placeholder="—"><span class="unit">kg</span></div>
+    <div class="row"><label>Pax arrière droit (MPAX_ARD)</label><input id="B_MPAX_ARD" type="number" step="1" placeholder="—"><span class="unit">kg</span></div>
+    <div class="row"><label>Bagages (MBAG)</label><input id="B_MBAG" type="number" step="1" placeholder="—"><span class="unit">kg</span></div>
+    <div class="row"><label>Réservoir gauche (LFG)</label><input id="B_LFG" type="number" step="1" placeholder="—"><span class="unit">L</span></div>
+    <div class="row"><label>Réservoir droit (LFD)</label><input id="B_LFD" type="number" step="1" placeholder="—"><span class="unit">L</span></div>
+    <div class="row"><label>Réservoir principal (LFAR)</label><input id="B_LFAR" type="number" step="1" placeholder="—"><span class="unit">L</span></div>
+    <div id="B_MSG"></div>
+  </fieldset>
+
+  <div class="notes">
+    Saisissez QNH, OAT, masse et altitude obstacle ci-dessus — ces valeurs alimentent automatiquement les calculs des onglets suivants.
+  </div>
+  </div>
+
+</div>
+
+<!-- ONGLET 2 : Vitesses caractéristiques (VBG, VS, Vol lent) -->
+<div id="p2" class="page">
+  <fieldset>
+    <legend>⚖️ Masse</legend>
+    <div class="row"><label>Masse M</label><input id="V_M" type="number" step="1" value="950"><span class="unit">kg</span></div>
+    <div class="row"><label>Masse max WMAX</label><input id="V_WMAX" type="number" step="1" value="1050"><span class="unit">kg</span></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🌀 Configuration en vol</legend>
+    <div class="row"><label>Volets</label>
+      <div class="runway-toggle" style="margin:0">
+        <label><input type="radio" name="V_VOLET" value="0" checked><span>0</span></label>
+        <label><input type="radio" name="V_VOLET" value="1"><span>1</span></label>
+        <label><input type="radio" name="V_VOLET" value="2"><span>2</span></label>
+      </div>
+    </div>
+    <div class="row"><label>Inclinaison en virage</label><input id="V_VIRAGE" type="number" step="1" value="0"><span class="unit">°</span></div>
+    <div class="row"><label>Marge de sécurité</label><input id="V_SECUR" type="number" step="1" value="0"><span class="unit">%</span></div>
+    <div class="notes" style="margin-top:0">VS = ROUND( VS0(volets) × √(M/WMAX) × √(1/cos(virage)) × (1+sécu/100) )<br>VS0 (manuel de vol F-HREJ, poids total 1050kg, 0° bank) : 55,6 kt (volets 0) · 52,4 kt (volets 1) · 50,2 kt (volets 2)</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🐌 Coefficients vol lent</legend>
+    <div class="row"><label>Coefficient borne haute (fin vol lent)</label><input id="V_KMAX" type="number" step="0.01" value="1.45"></div>
+    <div class="row"><label>Coefficient transition 1<sup>er</sup>/2<sup>e</sup> régime</label><input id="V_KTRANS" type="number" step="0.01" value="1.3"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🎯 Limites structurelles (VFE / VNO / VNE)</legend>
+    <div class="row"><label>VFE — vitesse max volets sortis</label><input id="V_VFE" type="number" step="1" value="92"><span class="unit">kt</span></div>
+    <div class="row"><label>VNO — vitesse max utilisation normale</label><input id="V_VNO" type="number" step="1" value="140"><span class="unit">kt</span></div>
+    <div class="row"><label>VNE — vitesse à ne jamais dépasser</label><input id="V_VNE" type="number" step="1" value="166"><span class="unit">kt</span></div>
+    <div class="notes" style="margin-top:0">Valeurs recoupées avec deux sources indépendantes (POH série DR400 + anémomètre DR400 documenté, Wikiversity) — VFE/VNO/VNE sont des limites de cellule identiques sur toute la famille DR400. VS1/VS0 restent calculées depuis votre masse réelle, propres au 160.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🏫 Vitesses club (référence fixe)</legend>
+    <div class="notes" style="margin-top:0">Vitesses imposées par l'aéro-club pour cet avion, indépendantes du calcul VS ci-dessus. Décollage 55 kt · Montée 70 kt · Vent arrière 80 kt · Finale 70 kt, majorée si vent.</div>
+    <div class="row"><label>Vent moyen (face)</label><input id="V_VENTMOY" type="number" step="1" value="0"><span class="unit">kt</span></div>
+    <div class="row"><label>Rafales (max)</label><input id="V_RAFALE" type="number" step="1" value="0"><span class="unit">kt</span></div>
+    <div class="notes" style="margin-top:6px">Majoration = ½ vent moyen + (rafales − vent moyen), appliquée uniquement à la finale.</div>
+  </fieldset>
+
+  <button class="btn" onclick="calcVitesses()">Calculer les vitesses</button>
+  <div id="p2_gauge"></div>
+  <div id="p2_out" class="result"></div>
+</div>
+
+<!-- ONGLET 3 : Tour de piste (caps + temps) -->
+<div id="p3" class="page">
+  <fieldset>
+    <legend>🛫 Piste et sens</legend>
+    <div class="row"><label>QFU (cap piste)</label><input id="T_QFU" type="number" step="1" value="70"><span class="unit">°</span></div>
+    <div class="row"><label>Sens du tour de piste</label>
+      <div class="runway-toggle" style="margin:0">
+        <label><input type="radio" name="T_MD" value="1" checked><span>Droite</span></label>
+        <label><input type="radio" name="T_MD" value="0"><span>Gauche</span></label>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>📏 Branche vent arrière</legend>
+    <div class="row"><label>Longueur branche (XNM)</label><input id="T_XNM" type="number" step="0.1" value="1.5"><span class="unit">NM</span></div>
+    <div class="row"><label>Vitesse sol (VG)</label><input id="T_VG" type="number" step="1" value="90"><span class="unit">kt</span></div>
+  </fieldset>
+
+  <button class="btn" onclick="calcTourPiste()">Calculer le tour de piste</button>
+  <div id="p3_out" class="result"></div>
+  <div id="p3_diagram" class="result" style="margin-top:10px"></div>
+</div>
+
+<!-- ONGLET 5 : ROC / Plafond selon POH DR400/160 (édition n°1, 10-5-1972) -->
+<div id="p5" class="page">
+  <fieldset>
+    <legend>📖 Référence POH — Performances de montée</legend>
+    <div class="notes" style="margin-top:0">
+      Atmosphère standard, volets 0°, pleine admission, mixture optimale (hélice Sensenich 74-2×66).<br>
+      <b>À 1050 kg :</b> Vz sol = 3,8 m/s · réduction 0,22 m/s/1000ft · plafond pratique 14 500 ft<br>
+      <b>À 850 kg :</b> Vz sol = 5,3 m/s · réduction 0,25 m/s/1000ft · plafond pratique 20 000 ft<br>
+      <b>Température :</b> chaque 10°C au-dessus du standard (ISA) → plafond −1000 ft, Vz −0,22 m/s
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⚖️ Masse et position</legend>
+    <div class="row"><label>Masse M</label><input id="R_M" type="number" step="1" value="950"><span class="unit">kg</span></div>
+    <div class="row"><label>Altitude-pression (PA)</label><input id="R_PA" type="number" step="100" value="0"><span class="unit">ft</span></div>
+    <div class="row"><label>OAT à cette altitude</label><input id="R_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
+  </fieldset>
+
+  <button class="btn" onclick="calcROCDensite()">Calculer ROC et plafond</button>
+  <div id="p5_out" class="result"></div>
+
+  <div class="notes" style="margin-top:8px">
+    Interpolation linéaire entre les deux masses de référence POH (850–1050 kg). Hors de cette plage, extrapolation — vérifier avec prudence.<br>
+    <b>Usage non certifié — méthode d'estimation, vérifier avec les abaques POH officiels avant toute décision opérationnelle.</b>
+  </div>
+</div>
+
+<!-- ONGLET 6 : Altitude pression / densité / vraie, méthode OACI exacte -->
+<div id="p6" class="page">
+  <fieldset>
+    <legend>🎚️ Type de saisie</legend>
+    <div class="runway-toggle" style="margin:0">
+      <label><input type="radio" name="A_MODE" value="QNH" checked><span>Altitude (QNH)</span></label>
+      <label><input type="radio" name="A_MODE" value="FL"><span>Niveau de vol (FL)</span></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>📥 Données</legend>
+    <div class="row" id="A_ROW_ALT"><label>Altitude indiquée (QNH réglé)</label><input id="A_ALT" type="number" step="10" value="2300"><span class="unit">ft</span></div>
+    <div class="row" id="A_ROW_FL" style="display:none"><label>Niveau de vol (FL)</label><input id="A_FL" type="number" step="1" value="65"><span class="unit">FL</span></div>
+    <div class="row"><label>QNH</label><input id="A_QNH" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
+    <div class="row"><label>OAT à cette altitude</label><input id="A_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
+    <div class="notes" style="margin-top:0">
+      En niveau de vol, le QNH sert uniquement à retrouver l'altitude indiquée équivalente (Zi) — l'altitude pression, elle, ne dépend que du FL.<br>
+      Méthode OACI exacte (ratio Kelvin) : PA=Zi+(1013−QNH)×27 · T_ISA=15−1,98×(PA/1000) · Zv=Zi×((OAT+273,15)/(T_ISA+273,15)) · DA=PA+120×(OAT−T_ISA).
+    </div>
+  </fieldset>
+
+  <button class="btn" onclick="calcAltitudes()">Calculer les altitudes</button>
+  <div id="p6_bar"></div>
+  <div id="p6_out" class="result"></div>
+</div>
+
+
+<script>
+// ── Persistance locale des variables saisies ──
+function v(id){ const el = document.getElementById(id); return el ? (+el.value || 0) : 0; }
+
+const DENS = 0.72;
+const ARM = { vide: 316, pil: 410, pax: 1190, bag: 1900, lfav: 100, lfar: 1120 };
+
+function readShared(key){
+  const val = localStorage.getItem('hrej_' + key);
+  return val === null ? null : val;
+}
+
+// Tentative de lecture initiale au chargement (n'a d'effet que si les deux pages partagent
+// réellement le même stockage — par ex. ouvertes toutes les deux dans Safari plutôt qu'en
+// icônes séparées sur l'écran d'accueil). Sinon les champs restent vides et se remplissent à la main.
+function initShared(){
+  const qnh = readShared('QNH');
+  const oat = readShared('OAT');
+  const qnhEl = document.getElementById('shared_qnh');
+  const oatEl = document.getElementById('shared_oat');
+  if(qnhEl && qnh !== null) qnhEl.value = qnh;
+  if(oatEl && oat !== null) oatEl.value = oat;
+
+  const mvide = readShared('MVIDE'), mpil = readShared('MPIL');
+  const mpax_av = readShared('MPAX_AV'), mpax_arg = readShared('MPAX_ARG'), mpax_ard = readShared('MPAX_ARD');
+  const mbag = readShared('MBAG');
+  const lfg = readShared('LFG'), lfd = readShared('LFD'), lfar = readShared('LFAR');
+  const massInputsPresent = [mvide,mpil,mpax_av,mpax_arg,mpax_ard,mbag,lfg,lfd,lfar].every(x => x !== null);
+  const masseEl = document.getElementById('shared_masse');
+  if(massInputsPresent && masseEl){
+    const M = (+mvide) + (+mpil) + (+mpax_av) + (+mpax_arg) + (+mpax_ard) + (+mbag)
+            + ((+lfg) + (+lfd)) * DENS + (+lfar) * DENS;
+    masseEl.value = M.toFixed(1);
+  } else if(masseEl){
+    // Recharge la dernière saisie manuelle
+    const masseLocale = localStorage.getItem('outils2_masse_locale');
+    if(masseLocale !== null) masseEl.value = masseLocale;
+  }
+  const obstacleEl = document.getElementById('shared_obstacle');
+  const obstacleLocale = localStorage.getItem('outils2_obstacle_locale');
+  if(obstacleEl && obstacleLocale !== null) obstacleEl.value = obstacleLocale;
+
+  const altEl = document.getElementById('A_ALT');
+  const altLocale = localStorage.getItem('outils2_alt_locale');
+  if(altEl && altLocale !== null) altEl.value = altLocale;
+  const flEl = document.getElementById('A_FL');
+  const flLocale = localStorage.getItem('outils2_fl_locale');
+  if(flEl && flLocale !== null) flEl.value = flLocale;
+
+  const rpaEl = document.getElementById('R_PA');
+  const rpaLocale = localStorage.getItem('outils2_rpa_locale');
+  if(rpaEl && rpaLocale !== null) rpaEl.value = rpaLocale;
+  const roatEl = document.getElementById('R_OAT');
+  const roatLocale = localStorage.getItem('outils2_roat_locale');
+  if(roatEl && roatLocale !== null) roatEl.value = roatLocale;
+
+  syncMasseToTabs();
+  syncQnhOatToTabs();
+}
+
+// Propage la masse saisie (ou trouvée) ici vers les onglets qui l'utilisent par défaut
+function syncMasseToTabs(){
+  const masseEl = document.getElementById('shared_masse');
+  const val = masseEl ? masseEl.value : '';
+  if(val === '') return;
+  const vm = document.getElementById('V_M');
+  if(vm && !vm.dataset.manual) vm.value = val;
+  const rm = document.getElementById('R_M');
+  if(rm && !rm.dataset.manual) rm.value = val;
+}
+
+// Propage QNH/OAT saisis dans l'onglet Partagé vers l'onglet Altitudes
+function syncQnhOatToTabs(){
+  const qnhVal = document.getElementById('shared_qnh')?.value;
+  const oatVal = document.getElementById('shared_oat')?.value;
+  if(qnhVal){
+    const aq = document.getElementById('A_QNH');
+    if(aq && !aq.dataset.manual) aq.value = qnhVal;
+  }
+  if(oatVal){
+    const ao = document.getElementById('A_OAT');
+    if(ao && !ao.dataset.manual) ao.value = oatVal;
+    const ro = document.getElementById('R_OAT');
+    if(ro && !ro.dataset.manual) ro.value = oatVal;
+  }
+}
+
+document.getElementById('shared_qnh')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('hrej_QNH', this.value);
+  syncQnhOatToTabs();
+});
+document.getElementById('shared_oat')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('hrej_OAT', this.value);
+  syncQnhOatToTabs();
+});
+document.getElementById('shared_masse')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('outils2_masse_locale', this.value);
+  syncMasseToTabs();
+});
+document.getElementById('shared_obstacle')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('outils2_obstacle_locale', this.value);
+});
+
+// Mode de saisie masse : simple (champ direct) ou détaillée (postes + calcul en direct)
+function applyMasseMode(){
+  const mode = document.querySelector('input[name="M_MODE"]:checked')?.value || 'simple';
+  const fs = document.getElementById('fieldset_detail_masse');
+  const masseEl = document.getElementById('shared_masse');
+  if(mode === 'detail'){
+    fs.style.display = '';
+    masseEl.readOnly = true;
+    calcMasseDetail(false);
+  } else {
+    fs.style.display = 'none';
+    masseEl.readOnly = false;
+    document.getElementById('B_MSG').innerHTML = '';
+  }
+}
+document.querySelectorAll('input[name="M_MODE"]').forEach(r => {
+  r.addEventListener('change', function(){
+    localStorage.setItem('outils2_field_M_MODE', this.value);
+    applyMasseMode();
+  });
+});
+
+// Calculateur de masse détaillé (onglet 1), persistance + calcul EN DIRECT (à chaque saisie, pas besoin de bouton)
+const B_IDS = ['B_MVIDE','B_MPIL','B_MPAX_AV','B_MPAX_ARG','B_MPAX_ARD','B_MBAG','B_LFG','B_LFD','B_LFAR'];
+function restoreBMasse(){
+  B_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const saved = localStorage.getItem('outils2_field_' + id);
+    if(saved !== null) el.value = saved;
+  });
+}
+function calcMasseDetail(showMsg){
+  const vals = B_IDS.map(id => document.getElementById(id)?.value);
+  const msgEl = document.getElementById('B_MSG');
+  if(vals.some(v => v === '' || v === undefined)){
+    if(showMsg) msgEl.innerHTML = `<div class="banner-warn">⚠️ Renseignez tous les postes pour calculer la masse totale.</div>`;
+    return;
+  }
+  const [mvide, mpil, mpax_av, mpax_arg, mpax_ard, mbag, lfg, lfd, lfar] = vals.map(Number);
+  const M = mvide + mpil + mpax_av + mpax_arg + mpax_ard + mbag + (lfg + lfd) * DENS + lfar * DENS;
+  const masseEl = document.getElementById('shared_masse');
+  delete masseEl.dataset.manual;
+  masseEl.value = M.toFixed(1);
+  masseEl.dispatchEvent(new Event('input'));
+  if(showMsg) msgEl.innerHTML = `<div class="banner-ok">✅ Masse totale calculée : ${M.toFixed(1)} kg</div>`;
+}
+B_IDS.forEach(id => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('input', function(){
+    localStorage.setItem('outils2_field_' + id, this.value);
+    calcMasseDetail(true);   // recalcule immédiatement à chaque modification d'un poste, plus de bouton à repenser
+  });
+});
+restoreBMasse();
+const savedMasseMode = localStorage.getItem('outils2_field_M_MODE');
+if(savedMasseMode){
+  const r = document.querySelector(`input[name="M_MODE"][value="${savedMasseMode}"]`);
+  if(r) r.checked = true;
+}
+applyMasseMode();
+document.getElementById('A_ALT')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('outils2_alt_locale', this.value);
+});
+document.getElementById('A_FL')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('outils2_fl_locale', this.value);
+});
+document.getElementById('R_PA')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('outils2_rpa_locale', this.value);
+});
+document.getElementById('R_OAT')?.addEventListener('input', function(){
+  if(this.value !== '') localStorage.setItem('outils2_roat_locale', this.value);
+});
+
+// Persistance générique : tous les champs de réglage sans logique de synchro dédiée
+// (évite d'écrire un bloc dédié pour chacun — se recharge automatiquement à chaque ouverture)
+const GENERIC_PERSIST_IDS = [
+  'V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VENTMOY','V_RAFALE',
+  'T_QFU','T_XNM','T_VG'
+];
+function restoreGenericFields(){
+  GENERIC_PERSIST_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const saved = localStorage.getItem('outils2_field_' + id);
+    if(saved !== null) el.value = saved;
+  });
+}
+GENERIC_PERSIST_IDS.forEach(id => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('input', function(){
+    localStorage.setItem('outils2_field_' + id, this.value);
+  });
+});
+restoreGenericFields();
+
+document.getElementById('V_M')?.addEventListener('input', () => { document.getElementById('V_M').dataset.manual = '1'; });
+document.getElementById('R_M')?.addEventListener('input', () => { document.getElementById('R_M').dataset.manual = '1'; });
+document.getElementById('A_QNH')?.addEventListener('input', () => { document.getElementById('A_QNH').dataset.manual = '1'; });
+document.getElementById('A_OAT')?.addEventListener('input', () => { document.getElementById('A_OAT').dataset.manual = '1'; });
+document.getElementById('R_OAT')?.addEventListener('input', () => { document.getElementById('R_OAT').dataset.manual = '1'; });
+
+// ── Onglet 2 : Vitesses caractéristiques (formules HP-19BII) ──
+function vv(id){ const el = document.getElementById(id); return el ? (+el.value || 0) : 0; }
+
+function buildASIGauge(VS1, VS0, VFE, VNO, VNE){
+  const cx=150, cy=150, R=128, bandW=18;
+  const START=-140, END=140, SWEEP=280;
+  const VLO=30;
+  const VHI = Math.max(Math.ceil((VNE+10)/10)*10, 180);
+  function angOf(v){ return START + (Math.max(VLO,Math.min(VHI,v))-VLO)/(VHI-VLO)*SWEEP; }
+  function arcPath(radius, aStart, aEnd){
+    const [ux1,uy1]=u_(aStart), [ux2,uy2]=u_(aEnd);
+    const x1=cx+radius*ux1, y1=cy+radius*uy1, x2=cx+radius*ux2, y2=cy+radius*uy2;
+    const large = (aEnd-aStart) > 180 ? 1 : 0;
+    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${radius} ${radius} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+  }
+
+  let svg = `<circle cx="${cx}" cy="${cy}" r="${R+bandW/2+4}" fill="#0a1628" stroke="var(--border-2)" stroke-width="2"/>`;
+  const Rin = R - bandW - 16;   // anneau intérieur dédié à la bande volets, pour ne pas être recouvert
+  // Fond neutre de la plage utile (anneau extérieur : vert/jaune/rouge)
+  svg += `<path d="${arcPath(R, angOf(VLO), angOf(VHI))}" fill="none" stroke="#1d3056" stroke-width="${bandW}"/>`;
+  // Fond neutre de l'anneau intérieur (blanc/volets)
+  svg += `<path d="${arcPath(Rin, angOf(VLO), angOf(VHI))}" fill="none" stroke="#1d3056" stroke-width="${bandW*0.7}"/>`;
+  // Blanc : plage volets (VS0 → VFE), anneau intérieur — ne chevauche plus le vert
+  svg += `<path d="${arcPath(Rin, angOf(VS0), angOf(VFE))}" fill="none" stroke="#e8ecf3" stroke-width="${bandW*0.7}"/>`;
+  // Vert : utilisation normale (VS1 → VNO), anneau extérieur
+  svg += `<path d="${arcPath(R, angOf(VS1), angOf(VNO))}" fill="none" stroke="#4ade80" stroke-width="${bandW}"/>`;
+  // Jaune : prudence (VNO → VNE)
+  svg += `<path d="${arcPath(R, angOf(VNO), angOf(VNE))}" fill="none" stroke="#fbbf24" stroke-width="${bandW}"/>`;
+  // Rouge : VNE (radiale)
+  const [rux,ruy] = u_(angOf(VNE));
+  svg += `<line x1="${(cx+(R-bandW/2-2)*rux).toFixed(1)}" y1="${(cy+(R-bandW/2-2)*ruy).toFixed(1)}" x2="${(cx+(R+bandW/2+2)*rux).toFixed(1)}" y2="${(cy+(R+bandW/2+2)*ruy).toFixed(1)}" stroke="#f87171" stroke-width="4"/>`;
+
+  // Graduations et étiquettes tous les 20 kt
+  for(let v=VLO; v<=VHI; v+=20){
+    const a = angOf(v);
+    const [tux,tuy] = u_(a);
+    const rInner = 68, rOuter = 76;
+    svg += `<line x1="${(cx+rInner*tux).toFixed(1)}" y1="${(cy+rInner*tuy).toFixed(1)}" x2="${(cx+rOuter*tux).toFixed(1)}" y2="${(cy+rOuter*tuy).toFixed(1)}" stroke="var(--text-dim)" stroke-width="1.5"/>`;
+    const rLabel = 56;
+    svg += `<text x="${(cx+rLabel*tux).toFixed(1)}" y="${(cy+rLabel*tuy+4).toFixed(1)}" text-anchor="middle" font-size="12" fill="var(--text-dim)">${v}</text>`;
+  }
+
+  // Marqueurs des vitesses clés avec étiquette (VS1, VS0, VFE, VNO, VNE)
+  const marks = [
+    {v:VS1, label:'VS1', color:'#4ade80', rOff:14},
+    {v:VS0, label:'VS0', color:'#93c5fd', rOff:26},
+    {v:VFE, label:'VFE', color:'#9aa8c2', rOff:14},
+    {v:VNO, label:'VNO', color:'#fbbf24', rOff:14},
+    {v:VNE, label:'VNE', color:'#f87171', rOff:14},
+  ];
+  let labelSvg = '';
+  for(const m of marks){
+    const a = angOf(m.v);
+    const [mux,muy] = u_(a);
+    const rMark = R + bandW/2 + m.rOff;
+    labelSvg += `<text x="${(cx+rMark*mux).toFixed(1)}" y="${(cy+rMark*muy-5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${m.color}">${m.label}</text>`;
+    labelSvg += `<text x="${(cx+rMark*mux).toFixed(1)}" y="${(cy+rMark*muy+9).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${m.color}">${Math.round(m.v)} kt</text>`;
+  }
+
+  const center = `<circle cx="${cx}" cy="${cy}" r="4" fill="var(--text-dim)"/><text x="${cx}" y="${cy+28}" text-anchor="middle" font-size="11" fill="var(--text-dim)">kt</text>`;
+
+  return `<div class="result" style="display:flex;justify-content:center"><svg viewBox="-60 -60 420 420" style="width:100%;max-width:380px">${svg}${center}${labelSvg}</svg></div>`;
+}
+
+function buildRegimeBar(vs, vtrans, vhaut){
+  const total = vhaut - vs;
+  if(total <= 0) return '';
+  const seg1 = Math.max(0, Math.min(100, (vtrans - vs) / total * 100));
+  const seg2 = 100 - seg1;
+  return `
+  <div style="position:relative;margin:10px 0 4px">
+    <div style="display:flex;height:26px;border:1px solid var(--border-2);border-right:none">
+      <div style="width:${(seg1/(seg1+seg2)*100).toFixed(1)}%;background:#fbbf24;border-radius:6px 0 0 6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0a1628;white-space:nowrap;overflow:hidden">2e régime</div>
+      <div style="width:${(seg2/(seg1+seg2)*100).toFixed(1)}%;background:#4ade80;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#0a1628;white-space:nowrap;position:relative">1er régime
+        <span style="position:absolute;right:-11px;top:50%;transform:translateY(-50%);width:0;height:0;border-top:13px solid transparent;border-bottom:13px solid transparent;border-left:11px solid #4ade80"></span>
+      </div>
+    </div>
+    <div style="height:26px"></div>
+    <div style="position:absolute;top:0;left:0;font-size:11px;font-weight:700;color:var(--val);background:#0a1628;padding:2px 6px;border-radius:4px;border:1px solid var(--border-2)">${Math.round(vs)} kt</div>
+    <div style="position:absolute;top:0;left:${seg1.toFixed(1)}%;transform:translateX(-50%);font-size:11px;font-weight:700;color:var(--val);background:#0a1628;padding:2px 6px;border-radius:4px;border:1px solid var(--border-2)">${Math.round(vtrans)} kt</div>
+  </div>`;
+}
+
+function calcVitesses(){
+  const M = vv('V_M'), WMAX = vv('V_WMAX') || 1;
+  const volet = document.querySelector('input[name="V_VOLET"]:checked')?.value || '0';
+  const VIRAGE = vv('V_VIRAGE'), SECUR = vv('V_SECUR');
+  const KMAX = vv('V_KMAX'), KTRANS = vv('V_KTRANS');
+  const VFE = vv('V_VFE'), VNO = vv('V_VNO'), VNE = vv('V_VNE');
+
+  // VS0 issues du VRAI manuel de vol F-HREJ (Édition n°1, table "Vitesse de décrochage : Vi en km/h au poids total"),
+  // poids total = 1050 kg. Vérifiées : la formule ci-dessous retombe sur les valeurs du manuel à 30° et 60° à ±0,3kt près.
+  const vs0map = { '0':55.6, '1':52.4, '2':50.2 };
+  function vsAt(v){ return vs0map[v] * Math.sqrt(M / WMAX); }
+
+  const cosV = Math.cos(VIRAGE * Math.PI / 180);
+  if(cosV <= 0){
+    document.getElementById('p2_out').innerHTML = `<div class="banner-warn">⚠️ Inclinaison ≥ 90° — calcul impossible (facteur de charge infini).</div>`;
+    return;
+  }
+
+  // 1. Vitesse limite anti-décrochage en virage (décollage / remise de gaz)
+  const VS_virage = Math.round(vs0map[volet] * Math.sqrt(M / WMAX) * Math.sqrt(1 / cosV) * (1 + SECUR / 100));
+
+  // 2. Remise de gaz : seuils de rentrée progressive des volets (indépendant du sélecteur ci-dessus)
+  const V_retrait_30_10 = Math.round(1.2 * vsAt('1'));   // seuil pour passer du 2e au 1er cran
+  const V_retrait_10_0  = Math.round(1.2 * vsAt('0'));   // seuil pour passer du 1er cran à lisse
+
+  // 3. Second régime de vol (VS à 1,3×VS), configuration actuellement sélectionnée
+  const VS_config   = Math.round(vsAt(volet));
+  const V_2eregime  = Math.round(KTRANS * vsAt(volet));
+  const V_hautvollent = Math.round(KMAX * vsAt(volet));
+
+  // 4. VBG — vitesse de meilleure finesse (pour référence, priorité basse)
+  const VBG = 78 * Math.sqrt(M / 1050);
+
+  // 5. Vitesses club fixes, avec majoration vent sur la finale (½ vent moyen + rafales)
+  const VENTMOY = vv('V_VENTMOY'), RAFALE = vv('V_RAFALE');
+  const majoration = Math.round(VENTMOY / 2 + Math.max(0, RAFALE - VENTMOY));
+  const CLUB_DECOLLAGE = 55, CLUB_MONTEE = 70, CLUB_VENTARR = 80, CLUB_FINALE = 70;
+  const finaleMajoree = CLUB_FINALE + majoration;
+
+  let html = '';
+  html += `<div class="section-title">🏫 Vitesses club (référence fixe)</div>`;
+  html += `<div class="kvline"><span class="k">Décollage</span><span class="v">${CLUB_DECOLLAGE} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Montée initiale</span><span class="v">${CLUB_MONTEE} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Vent arrière</span><span class="v">${CLUB_VENTARR} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Finale (sans vent)</span><span class="v">${CLUB_FINALE} kt</span></div>`;
+  if(majoration > 0){
+    html += `<div class="kvline"><span class="k">Majoration vent (½ vent + rafales)</span><span class="v">+${majoration} kt</span></div>`;
+    html += `<div class="kvline"><span class="k">Finale majorée</span><span class="v">${finaleMajoree} kt</span></div>`;
+    if(finaleMajoree > VFE){
+      html += `<div class="banner-warn">⚠️ La finale majorée (${finaleMajoree} kt) dépasse VFE (${VFE} kt) — vérifiez que les volets restent adaptés à cette vitesse.</div>`;
+    }
+  }
+
+  html += `<div class="section-title">🌀 Vitesse limite anti-décrochage en virage</div>`;
+  html += `<div class="notes" style="margin-top:0">Décollage ou remise de gaz, virage immédiat (ex. évitement d'obstacle) — volets ${volet}, virage ${VIRAGE}°.</div>`;
+  html += `<div class="kvline"><span class="k">Ne pas descendre en dessous de</span><span class="v">${VS_virage} kt</span></div>`;
+
+  html += `<div class="section-title">🔄 Remise de gaz — rentrée des volets</div>`;
+  html += `<div class="kvline"><span class="k">Rentrer 2e cran → 1er cran, à partir de</span><span class="v">${V_retrait_30_10} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Rentrer 1er cran → lisse, à partir de</span><span class="v">${V_retrait_10_0} kt</span></div>`;
+
+  html += `<div class="section-title">⚠️ Second régime de vol (volets ${volet})</div>`;
+  html += `<div class="kvline"><span class="k">VS — début du second régime</span><span class="v">${VS_config} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Fin du second régime (1,3×VS)</span><span class="v">${V_2eregime} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Fin de la plage de vol lent (1,45×VS)</span><span class="v">${V_hautvollent} kt</span></div>`;
+
+  html += `<div class="section-title">🪂 VBG — meilleure finesse (référence)</div>`;
+  html += `<div class="kvline"><span class="k">VBG</span><span class="v">${VBG.toFixed(1)} kt</span></div>`;
+
+  document.getElementById('p2_gauge').innerHTML = buildASIGauge(vsAt('0'), vsAt('2'), VFE, VNO, VNE) + buildRegimeBar(VS_config, V_2eregime, V_hautvollent);
+  document.getElementById('p2_out').innerHTML = html;
+}
+
+// ── Onglet 3 : Tour de piste (caps et temps, formules HP-19BII) ──
+function mod360(x){ return ((x % 360) + 360) % 360; }
+function fmtMinSec(decMin){
+  let m = Math.floor(decMin);
+  let s = Math.round((decMin - m) * 60);
+  if(s === 60){ s = 0; m += 1; }
+  return `${m} min ${s.toString().padStart(2,'0')} s`;
+}
+
+function u_(deg){ const r = deg*Math.PI/180; return [Math.sin(r), -Math.cos(r)]; }
+function ptAt(base, dist, bearing){ const [ux,uy] = u_(bearing); return [base[0]+dist*ux, base[1]+dist*uy]; }
+
+function buildPatternSVG(CAPF, CAPT, CAPD, CAPB){
+  const H=63, W=71, D=118;          // longueurs schématiques des branches (pas à l'échelle)
+  const cx=150, cy=150;
+  const P0=[cx,cy];
+  const P1=ptAt(P0,H,CAPF);
+  const P2=ptAt(P1,W,CAPT);
+  const P3=ptAt(P2,D,CAPD);
+  const P4=ptAt(P3,W,CAPB);
+
+  const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+  const legs = [
+    { p1:P0, p2:P1, cap:CAPF, label:'Finale/décollage' },
+    { p1:P1, p2:P2, cap:CAPT, label:'Traversier' },
+    { p1:P2, p2:P3, cap:CAPD, label:'Vent arrière' },
+    { p1:P3, p2:P4, cap:CAPB, label:'Base' },
+    { p1:P4, p2:P0, cap:CAPF, label:'' } // retour vers la finale, même cap, pas de doublon d'étiquette
+  ];
+
+  // Rose des vents : cercle fixe, N toujours en haut, indépendant du QFU
+  const Rring = 130;
+  let rose = `<circle cx="${cx}" cy="${cy}" r="${Rring}" fill="none" stroke="var(--border-2)" stroke-width="1.5"/>`;
+  for(let d=0; d<360; d+=30){
+    const [ux,uy] = u_(d);
+    const inner = d%90===0 ? Rring-12 : Rring-6;
+    const x1=cx+inner*ux, y1=cy+inner*uy, x2=cx+Rring*ux, y2=cy+Rring*uy;
+    rose += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="var(--border-2)" stroke-width="${d%90===0?2:1}"/>`;
+  }
+  const cardinals = [['N',0],['E',90],['S',180],['O',270]];
+  for(const [txt,deg] of cardinals){
+    const [ux,uy] = u_(deg);
+    const x=cx+(Rring-24)*ux, y=cy+(Rring-24)*uy;
+    rose += `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-dim)">${txt}</text>`;
+  }
+
+  // Piste (trait au centre, dans l'axe CAPF/CAPF+180)
+  const [rux,ruy] = u_(CAPF);
+  const rwLen = 16;
+  const rwx1=cx-rwLen*rux, rwy1=cy-rwLen*ruy, rwx2=cx+rwLen*rux, rwy2=cy+rwLen*ruy;
+  const runway = `<line x1="${rwx1.toFixed(1)}" y1="${rwy1.toFixed(1)}" x2="${rwx2.toFixed(1)}" y2="${rwy2.toFixed(1)}" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>`;
+
+  // Tracé du circuit + flèches de sens + étiquettes de cap
+  let path = `M ${P0[0].toFixed(1)} ${P0[1].toFixed(1)}`;
+  let arrows = '';
+  let labels = '';
+  for(const leg of legs){
+    path += ` L ${leg.p2[0].toFixed(1)} ${leg.p2[1].toFixed(1)}`;
+    const m = mid(leg.p1, leg.p2);
+    const [aux,auy] = u_(leg.cap);
+    // Flèche de sens (petit triangle orienté vers le cap de la branche)
+    const ang = leg.cap;
+    arrows += `<polygon points="0,-6 5,5 -5,5" fill="#4a7fe0" transform="translate(${m[0].toFixed(1)},${m[1].toFixed(1)}) rotate(${ang.toFixed(1)})"/>`;
+    if(leg.label){
+      // Étiquette poussée vers l'extérieur du circuit, dans le sens perpendiculaire à la branche
+      const [oux,ouy] = [m[0]-cx, m[1]-cy];
+      const od = Math.hypot(oux,ouy) || 1;
+      const lx = m[0] + (oux/od)*22, ly = m[1] + (ouy/od)*22;
+      labels += `<text x="${lx.toFixed(1)}" y="${(ly-4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--val)">${leg.label}</text>`;
+      labels += `<text x="${lx.toFixed(1)}" y="${(ly+10).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">${Math.round(leg.cap)}°</text>`;
+    }
+  }
+  const circuit = `<path d="${path}" fill="none" stroke="#4a7fe0" stroke-width="3"/>`;
+  const plane = `<circle cx="${cx}" cy="${cy}" r="4" fill="var(--accent)"/>`;
+
+  return `<svg viewBox="0 0 300 300" style="width:100%;max-width:340px;display:block;margin:0 auto">${rose}${runway}${circuit}${arrows}${plane}${labels}</svg>`;
+}
+
+function calcTourPiste(){
+  const QFU = vv('T_QFU');
+  const MD = document.querySelector('input[name="T_MD"]:checked')?.value === '1';
+  const XNM = vv('T_XNM'), VG = vv('T_VG') || 1;
+  const sign = MD ? 1 : -1;   // droite : virages à droite (+90 à chaque étape) · gauche : virages à gauche (-90)
+
+  const CAPF = mod360(QFU);                 // étape finale / décollage, face au vent
+  const CAPT = mod360(QFU + 90 * sign);     // étape traversier (1er virage après décollage)
+  const CAPD = mod360(QFU + 180);           // vent arrière (toujours QFU+180, quel que soit le sens)
+  const CAPB = mod360(QFU - 90 * sign);     // étape de base (virage opposé au traversier)
+  const TWDEC = 60 * XNM / VG;          // temps vent arrière, minutes décimales
+  const TBDEC = 0.6 * TWDEC;            // temps étape de base (règle des 60%)
+
+  let html = '';
+  html += `<div class="section-title">Caps</div>`;
+  html += `<div class="kvline"><span class="k">Étape finale / face au vent (CAPF)</span><span class="v">${CAPF.toFixed(0)}°</span></div>`;
+  html += `<div class="kvline"><span class="k">Traversier (CAPT)</span><span class="v">${CAPT.toFixed(0)}°</span></div>`;
+  html += `<div class="kvline"><span class="k">Vent arrière (CAPD)</span><span class="v">${CAPD.toFixed(0)}°</span></div>`;
+  html += `<div class="kvline"><span class="k">Étape de base (CAPB)</span><span class="v">${CAPB.toFixed(0)}°</span></div>`;
+  html += `<div class="section-title">Temps estimés</div>`;
+  html += `<div class="kvline"><span class="k">Vent arrière (TW)</span><span class="v">${fmtMinSec(TWDEC)}</span></div>`;
+  html += `<div class="kvline"><span class="k">Étape de base (TB)</span><span class="v">${fmtMinSec(TBDEC)}</span></div>`;
+  document.getElementById('p3_out').innerHTML = html;
+  document.getElementById('p3_diagram').innerHTML = buildPatternSVG(CAPF, CAPT, CAPD, CAPB);
+}
+
+// ── Onglet 5 : ROC / Plafond selon POH DR400/160 (interpolation 850-1050 kg) ──
+const MS_TO_FPM = 196.85;
+
+function poh_roc_sl(M){       // m/s, référence POH
+  const t = (M - 850) / 200;
+  return 5.3 + t * (3.8 - 5.3);
+}
+function poh_reduction(M){    // m/s par 1000 ft
+  const t = (M - 850) / 200;
+  return 0.25 + t * (0.22 - 0.25);
+}
+function poh_ceiling(M){      // ft
+  const t = (M - 850) / 200;
+  return 20000 + t * (14500 - 20000);
+}
+
+function calcROCDensite(){
+  const M = vv('R_M'), PA = vv('R_PA'), OAT = vv('R_OAT');
+
+  const ROC_SL = poh_roc_sl(M);
+  const reduction = poh_reduction(M);
+  const ceilBase = poh_ceiling(M);
+
+  const ISA_C = 15 - 1.98 * (PA / 1000);
+  const dT = OAT - ISA_C;
+
+  const ROC_base_ms = ROC_SL - reduction * (PA / 1000);
+  const ROC_final_ms = ROC_base_ms - 0.22 * (dT / 10);
+  const ROC_final_fpm = ROC_final_ms * MS_TO_FPM;
+
+  const ceilCorr = ceilBase - 1000 * (dT / 10);
+
+  let html = '';
+  const outOfRange = (M < 850 || M > 1050);
+  if(outOfRange){
+    html += `<div class="banner-warn">⚠️ Masse hors plage de référence POH (850–1050 kg) — extrapolation, à considérer avec prudence.</div>`;
+  }
+
+  let vClass, verdict;
+  if(ROC_final_fpm <= 0){
+    verdict = '❌ Impossible de monter (ROC ≤ 0) — descente relative garantie'; vClass = 'banner-bad';
+  } else if(ROC_final_fpm < 200){
+    verdict = '⚠️ ROC très faible — marge de sécurité insuffisante'; vClass = 'banner-warn';
+  } else {
+    verdict = '✅ Montée possible'; vClass = 'banner-ok';
+  }
+  html += `<div class="${vClass}">${verdict}</div>`;
+
+  html += `<div class="section-title">Résultat</div>`;
+  html += `<div class="kvline"><span class="k">ROC à cette masse/altitude/OAT</span><span class="v">${ROC_final_fpm.toFixed(0)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Plafond pratique corrigé (T°)</span><span class="v">${ceilCorr.toFixed(0)} ft</span></div>`;
+
+  html += `<div class="section-title">Détail</div>`;
+  html += `<div class="kvline"><span class="k">ROC sol (interpolé, masse M)</span><span class="v">${ROC_SL.toFixed(2)} m/s</span></div>`;
+  html += `<div class="kvline"><span class="k">Réduction (interpolée, masse M)</span><span class="v">${reduction.toFixed(3)} m/s / 1000ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Plafond de base (masse M, std)</span><span class="v">${ceilBase.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">ISA à cette PA</span><span class="v">${ISA_C.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart ISA (ΔT)</span><span class="v">${dT>=0?'+':''}${dT.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">ROC avant correction T°</span><span class="v">${(ROC_base_ms*MS_TO_FPM).toFixed(0)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Correction température</span><span class="v">${(-0.22*(dT/10)*MS_TO_FPM).toFixed(0)} ft/min</span></div>`;
+
+  document.getElementById('p5_out').innerHTML = html;
+}
+
+// ── Onglet 6 : Altitude pression / densité / vraie ──
+document.querySelectorAll('input[name="A_MODE"]').forEach(r => {
+  r.addEventListener('change', () => {
+    const isFL = document.querySelector('input[name="A_MODE"]:checked').value === 'FL';
+    document.getElementById('A_ROW_ALT').style.display = isFL ? 'none' : '';
+    document.getElementById('A_ROW_FL').style.display = isFL ? '' : 'none';
+  });
+});
+
+function calcAltitudes(){
+  const mode = document.querySelector('input[name="A_MODE"]:checked').value;
+  const QNH = v('A_QNH'), OAT = v('A_OAT');
+
+  let PA, Zi;
+  if(mode === 'FL'){
+    const FL = v('A_FL');
+    PA = FL * 100;
+    Zi = PA - (1013 - QNH) * 27;
+  } else {
+    Zi = v('A_ALT');
+    PA = Zi + (1013 - QNH) * 27;
+  }
+
+  const T_ISA = 15 - 1.98 * (PA / 1000);
+  const dT = OAT - T_ISA;
+  const DA = PA + 120 * dT;
+  const Zv = Zi * ((OAT + 273.15) / (T_ISA + 273.15));
+
+  let html = '';
+
+  const obstacle = document.getElementById('shared_obstacle')?.value;
+  const hasObstacle = obstacle !== '' && obstacle != null && !isNaN(+obstacle);
+  if(hasObstacle){
+    const margin = Zv - (+obstacle);
+    if(margin <= 0){
+      html += `<div class="banner-bad">⚠️ Vous ne passez pas l'obstacle — il manque ${Math.abs(margin).toFixed(0)} ft (altitude vraie ${Zv.toFixed(0)} ft, obstacle ${(+obstacle).toFixed(0)} ft)</div>`;
+    } else if(margin < 500){
+      html += `<div class="banner-warn">⚠️ Marge faible au-dessus de l'obstacle : ${margin.toFixed(0)} ft</div>`;
+    } else {
+      html += `<div class="banner-ok">✅ Vous passez l'obstacle avec une marge de ${margin.toFixed(0)} ft</div>`;
+    }
+  }
+
+  html += `<div class="section-title">Résultats</div>`;
+  if(mode === 'FL'){
+    html += `<div class="kvline"><span class="k">Altitude indiquée équivalente (Zi, sur QNH)</span><span class="v">${Zi.toFixed(0)} ft</span></div>`;
+  }
+  html += `<div class="kvline"><span class="k">Altitude pression (PA)</span><span class="v">${PA.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">ISA à cette PA</span><span class="v">${T_ISA.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart ISA (ΔT)</span><span class="v">${dT>=0?'+':''}${dT.toFixed(1)} °C</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude densité (DA)</span><span class="v">${DA.toFixed(0)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude vraie (Zv, MSL réelle)</span><span class="v">${Zv.toFixed(0)} ft</span></div>`;
+
+  if(mode === 'QNH' && Math.abs(QNH-1013) < 0.5 && Math.abs(dT) < 0.5){
+    html += `<div class="notes" style="margin-top:6px">QNH≈1013 et température≈ISA : les trois altitudes se confondent, c'est normal.</div>`;
+  }
+
+  document.getElementById('p6_out').innerHTML = html;
+
+  document.getElementById('p6_bar').innerHTML = buildAltitudeBar([
+    { label: 'Affichée', value: Zi, color: '#93c5fd' },
+    { label: 'Obstacle', value: hasObstacle ? +obstacle : null, color: '#f87171' },
+    { label: 'Vraie', value: Zv, color: '#4ade80' },
+    { label: 'Densité', value: DA, color: '#fbbf24' },
+    { label: 'Pression', value: PA, color: '#9aa8c2' },
+  ]);
+}
+
+function buildAltitudeBar(items){
+  const pts = items.filter(it => it.value !== null && !isNaN(it.value));
+  if(pts.length < 2) return '';
+  const vals = pts.map(p => p.value);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = (max - min) || 1;
+  const pad = span * 0.15;
+  const lo = min - pad, hi = max + pad;
+  const H = 230;
+  const pctOf = v => (v - lo) / (hi - lo) * 100;
+
+  // Tri décroissant (plus haut en valeur = plus haut à l'écran, en premier)
+  const sorted = [...pts].sort((a,b) => b.value - a.value);
+  const truePx = sorted.map(p => H - (pctOf(p.value) / 100) * H);
+
+  // Anti-collision : écarte les étiquettes trop proches, sans déplacer le vrai repère
+  const labelPx = [...truePx];
+  const minGap = 24;
+  for(let i = 1; i < labelPx.length; i++){
+    if(labelPx[i] - labelPx[i-1] < minGap) labelPx[i] = labelPx[i-1] + minGap;
+  }
+
+  let html = `<div style="position:relative;height:${(H+20).toFixed(0)}px;margin:14px 4px 14px 20px;padding-left:26px;border-left:2px solid var(--border-2)">`;
+  sorted.forEach((p, i) => {
+    const ty = truePx[i], ly = labelPx[i];
+    html += `<div style="position:absolute;top:${ty.toFixed(1)}px;left:-2px;width:16px;height:2px;background:${p.color}"></div>`;
+    if(Math.abs(ly - ty) > 1){
+      html += `<div style="position:absolute;top:${Math.min(ty,ly).toFixed(1)}px;left:14px;width:1px;height:${Math.abs(ly-ty).toFixed(1)}px;background:${p.color};opacity:0.45"></div>`;
+    }
+    html += `<div style="position:absolute;top:${ly.toFixed(1)}px;left:18px;transform:translateY(-50%);display:flex;align-items:center;gap:5px;white-space:nowrap">
+      <span style="font-size:10px;font-weight:700;color:${p.color};background:#0a1628;padding:1px 5px;border-radius:4px;border:1px solid var(--border-2)">${p.label}</span>
+      <span style="font-size:11px;font-weight:700;color:${p.color}">${Math.round(p.value)} ft</span>
+    </div>`;
+  });
+  html += `</div>`;
+
+  return `<div class="result">${html}</div>`;
+}
+
+// ── Navigation onglets (prêt pour l'ajout de nouveaux onglets) ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.page).classList.add('active');
+  });
+});
+
+initShared();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
