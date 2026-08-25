@@ -1,6 +1,6 @@
 {
-  "name": "DR400/160 — Instructeur",
-  "short_name": "DR400 Instructeur",
+  "name": "DR400/160 - CALCULS DIVERS",
+  "short_name": "DR400 Calculs",
   "description": "Outils de vol autonomes pour DR400/160 : vitesses, tour de piste, ROC/plafond, altitudes.",
   "start_url": "./",
   "scope": "./",
