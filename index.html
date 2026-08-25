@@ -87,8 +87,8 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div class="tab active" data-page="p1">1·Partagé</div>
   <div class="tab" data-page="p2">2·Vitesses</div>
   <div class="tab" data-page="p3">3·Tour piste</div>
-  <div class="tab" data-page="p5">4·ROC densité</div>
-  <div class="tab" data-page="p6">5·Altitudes</div>
+  <div class="tab" data-page="p6">4·Altitudes</div>
+  <div class="tab" data-page="p5">5·ROC densité</div>
 </div>
 
 <!-- ONGLET 1 : squelette, en attente des futurs outils -->
@@ -229,34 +229,6 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div id="p3_diagram" class="result" style="margin-top:10px"></div>
 </div>
 
-<!-- ONGLET 5 : ROC / Plafond selon POH DR400/160 (édition n°1, 10-5-1972) -->
-<div id="p5" class="page">
-  <fieldset>
-    <legend>📖 Référence POH — Performances de montée</legend>
-    <div class="notes" style="margin-top:0">
-      Atmosphère standard, volets 0°, pleine admission, mixture optimale (hélice Sensenich 74-2×66).<br>
-      <b>À 1050 kg :</b> Vz sol = 3,8 m/s · réduction 0,22 m/s/1000ft · plafond pratique 14 500 ft<br>
-      <b>À 850 kg :</b> Vz sol = 5,3 m/s · réduction 0,25 m/s/1000ft · plafond pratique 20 000 ft<br>
-      <b>Température :</b> chaque 10°C au-dessus du standard (ISA) → plafond −1000 ft, Vz −0,22 m/s
-    </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>⚖️ Masse et position</legend>
-    <div class="row"><label>Masse M</label><input id="R_M" type="number" step="1" value="950"><span class="unit">kg</span></div>
-    <div class="row"><label>Altitude-pression (PA)</label><input id="R_PA" type="number" step="100" value="0"><span class="unit">ft</span></div>
-    <div class="row"><label>OAT à cette altitude</label><input id="R_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
-  </fieldset>
-
-  <button class="btn" onclick="calcROCDensite()">Calculer ROC et plafond</button>
-  <div id="p5_out" class="result"></div>
-
-  <div class="notes" style="margin-top:8px">
-    Interpolation linéaire entre les deux masses de référence POH (850–1050 kg). Hors de cette plage, extrapolation — vérifier avec prudence.<br>
-    <b>Usage non certifié — méthode d'estimation, vérifier avec les abaques POH officiels avant toute décision opérationnelle.</b>
-  </div>
-</div>
-
 <!-- ONGLET 6 : Altitude pression / densité / vraie, méthode OACI exacte -->
 <div id="p6" class="page">
   <fieldset>
@@ -282,6 +254,35 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <button class="btn" onclick="calcAltitudes()">Calculer les altitudes</button>
   <div id="p6_bar"></div>
   <div id="p6_out" class="result"></div>
+</div>
+
+<!-- ONGLET 5 : ROC / Plafond selon POH DR400/160 (édition n°1, 10-5-1972) -->
+<div id="p5" class="page">
+  <fieldset>
+    <legend>📖 Référence POH — Performances de montée</legend>
+    <div class="notes" style="margin-top:0">
+      Atmosphère standard, volets 0°, pleine admission, mixture optimale (hélice Sensenich 74-2×66).<br>
+      <b>À 1050 kg :</b> Vz sol = 3,8 m/s · réduction 0,22 m/s/1000ft · plafond pratique 14 500 ft<br>
+      <b>À 850 kg :</b> Vz sol = 5,3 m/s · réduction 0,25 m/s/1000ft · plafond pratique 20 000 ft<br>
+      <b>Température :</b> chaque 10°C au-dessus du standard (ISA) → plafond −1000 ft, Vz −0,22 m/s
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⚖️ Masse et position</legend>
+    <div class="row"><label>Masse M</label><input id="R_M" type="number" step="1" value="950"><span class="unit">kg</span></div>
+    <div class="row"><label>Altitude-pression (PA)</label><input id="R_PA" type="number" step="100" value="0"><span class="unit">ft</span></div>
+    <div class="row"><label>OAT à cette altitude</label><input id="R_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
+    <div class="notes" style="margin-top:0">L'altitude-pression se remplit automatiquement dès que vous calculez dans l'onglet Altitudes — modifiable ici si besoin.</div>
+  </fieldset>
+
+  <button class="btn" onclick="calcROCDensite()">Calculer ROC et plafond</button>
+  <div id="p5_out" class="result"></div>
+
+  <div class="notes" style="margin-top:8px">
+    Interpolation linéaire entre les deux masses de référence POH (850–1050 kg). Hors de cette plage, extrapolation — vérifier avec prudence.<br>
+    <b>Usage non certifié — méthode d'estimation, vérifier avec les abaques POH officiels avant toute décision opérationnelle.</b>
+  </div>
 </div>
 
 
@@ -491,6 +492,7 @@ document.getElementById('R_M')?.addEventListener('input', () => { document.getEl
 document.getElementById('A_QNH')?.addEventListener('input', () => { document.getElementById('A_QNH').dataset.manual = '1'; });
 document.getElementById('A_OAT')?.addEventListener('input', () => { document.getElementById('A_OAT').dataset.manual = '1'; });
 document.getElementById('R_OAT')?.addEventListener('input', () => { document.getElementById('R_OAT').dataset.manual = '1'; });
+document.getElementById('R_PA')?.addEventListener('input', () => { document.getElementById('R_PA').dataset.manual = '1'; });
 
 // ── Onglet 2 : Vitesses caractéristiques (formules HP-19BII) ──
 function vv(id){ const el = document.getElementById(id); return el ? (+el.value || 0) : 0; }
@@ -882,6 +884,10 @@ function calcAltitudes(){
     { label: 'Densité', value: DA, color: '#fbbf24' },
     { label: 'Pression', value: PA, color: '#9aa8c2' },
   ]);
+
+  // Propage la PA calculée ici vers l'onglet ROC densité (sauf si l'utilisateur l'y a déjà modifiée à la main)
+  const rpaEl = document.getElementById('R_PA');
+  if(rpaEl && !rpaEl.dataset.manual) rpaEl.value = PA.toFixed(0);
 }
 
 function buildAltitudeBar(items){
