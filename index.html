@@ -185,11 +185,12 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </fieldset>
 
   <fieldset>
-    <legend>🎯 Limites structurelles (VFE / VNO / VNE)</legend>
+    <legend>🎯 Limites structurelles (VFE / VNO / VNE / VA)</legend>
     <div class="row"><label>VFE — vitesse max volets sortis</label><input id="V_VFE" type="number" step="1" value="92"><span class="unit">kt</span></div>
     <div class="row"><label>VNO — vitesse max utilisation normale</label><input id="V_VNO" type="number" step="1" value="140"><span class="unit">kt</span></div>
     <div class="row"><label>VNE — vitesse à ne jamais dépasser</label><input id="V_VNE" type="number" step="1" value="166"><span class="unit">kt</span></div>
-    <div class="notes" style="margin-top:0">Valeurs recoupées avec deux sources indépendantes (POH série DR400 + anémomètre DR400 documenté, Wikiversity) — VFE/VNO/VNE sont des limites de cellule identiques sur toute la famille DR400. VS1/VS0 restent calculées depuis votre masse réelle, propres au 160.</div>
+    <div class="row"><label>VA — vitesse de manœuvre</label><input id="V_VA" type="number" step="1" value="116"><span class="unit">kt</span></div>
+    <div class="notes" style="margin-top:0">Valeurs issues du manuel de vol F-HREJ (Édition n°1, 10-5-1972) — VNE 308 km/h, VNO 260 km/h, VFE 170 km/h, VA 215 km/h. Limites de cellule identiques sur toute la famille DR400. VS1/VS0 restent calculées depuis votre masse réelle, propres au 160.</div>
   </fieldset>
 
   <fieldset>
@@ -467,7 +468,7 @@ document.getElementById('R_OAT')?.addEventListener('input', function(){
 // Persistance générique : tous les champs de réglage sans logique de synchro dédiée
 // (évite d'écrire un bloc dédié pour chacun — se recharge automatiquement à chaque ouverture)
 const GENERIC_PERSIST_IDS = [
-  'V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VENTMOY','V_RAFALE',
+  'V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','V_VENTMOY','V_RAFALE',
   'T_QFU','T_XNM','T_VG'
 ];
 function restoreGenericFields(){
@@ -497,7 +498,7 @@ document.getElementById('R_PA')?.addEventListener('input', () => { document.getE
 // ── Onglet 2 : Vitesses caractéristiques (formules HP-19BII) ──
 function vv(id){ const el = document.getElementById(id); return el ? (+el.value || 0) : 0; }
 
-function buildASIGauge(VS1, VS0, VFE, VNO, VNE){
+function buildASIGauge(VS1, VS0, VFE, VNO, VNE, VA){
   const cx=150, cy=150, R=128, bandW=18;
   const START=-140, END=140, SWEEP=280;
   const VLO=30;
@@ -511,7 +512,7 @@ function buildASIGauge(VS1, VS0, VFE, VNO, VNE){
   }
 
   let svg = `<circle cx="${cx}" cy="${cy}" r="${R+bandW/2+4}" fill="#0a1628" stroke="var(--border-2)" stroke-width="2"/>`;
-  const Rin = R - bandW - 16;   // anneau intérieur dédié à la bande volets, pour ne pas être recouvert
+  const Rin = R - bandW - 24;   // anneau intérieur dédié à la bande volets, écarté pour laisser la place aux étiquettes VS0/VFE entre les deux anneaux
   // Fond neutre de la plage utile (anneau extérieur : vert/jaune/rouge)
   svg += `<path d="${arcPath(R, angOf(VLO), angOf(VHI))}" fill="none" stroke="#1d3056" stroke-width="${bandW}"/>`;
   // Fond neutre de l'anneau intérieur (blanc/volets)
@@ -537,15 +538,14 @@ function buildASIGauge(VS1, VS0, VFE, VNO, VNE){
   }
 
   // Marqueurs des vitesses clés avec étiquette (VS1, VS0, VFE, VNO, VNE)
-  const marks = [
+  const outerMarks = [
     {v:VS1, label:'VS1', color:'#4ade80', rOff:14},
-    {v:VS0, label:'VS0', color:'#93c5fd', rOff:26},
-    {v:VFE, label:'VFE', color:'#9aa8c2', rOff:14},
     {v:VNO, label:'VNO', color:'#fbbf24', rOff:14},
     {v:VNE, label:'VNE', color:'#f87171', rOff:14},
   ];
+  if(VA){ outerMarks.push({v:VA, label:'VA', color:'#67e8f9', rOff:38}); }
   let labelSvg = '';
-  for(const m of marks){
+  for(const m of outerMarks){
     const a = angOf(m.v);
     const [mux,muy] = u_(a);
     const rMark = R + bandW/2 + m.rOff;
@@ -553,9 +553,23 @@ function buildASIGauge(VS1, VS0, VFE, VNO, VNE){
     labelSvg += `<text x="${(cx+rMark*mux).toFixed(1)}" y="${(cy+rMark*muy+9).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${m.color}">${Math.round(m.v)} kt</text>`;
   }
 
+  // VS0 / VFE : étiquettes compactes (une ligne) placées DANS l'écart entre les deux anneaux,
+  // là où logiquement se situe la bande blanche qu'ils délimitent — pas rejetées à l'extérieur.
+  const rGap = (Rin + bandW*0.7/2 + R - bandW/2) / 2;
+  const innerMarks = [
+    {v:VS0, label:'VS0', color:'#93c5fd'},
+    {v:VFE, label:'VFE', color:'#9aa8c2'},
+  ];
+  for(const m of innerMarks){
+    const a = angOf(m.v);
+    const [mux,muy] = u_(a);
+    const x = (cx+rGap*mux).toFixed(1), y = (cy+rGap*muy+3.5).toFixed(1);
+    labelSvg += `<text x="${x}" y="${y}" text-anchor="middle" font-size="9" font-weight="700" fill="${m.color}">${m.label} ${Math.round(m.v)}</text>`;
+  }
+
   const center = `<circle cx="${cx}" cy="${cy}" r="4" fill="var(--text-dim)"/><text x="${cx}" y="${cy+28}" text-anchor="middle" font-size="11" fill="var(--text-dim)">kt</text>`;
 
-  return `<div class="result" style="display:flex;justify-content:center"><svg viewBox="-60 -60 420 420" style="width:100%;max-width:380px">${svg}${center}${labelSvg}</svg></div>`;
+  return `<div class="result" style="display:flex;justify-content:center"><svg viewBox="-75 -75 450 450" style="width:100%;max-width:380px">${svg}${center}${labelSvg}</svg></div>`;
 }
 
 function buildRegimeBar(vs, vtrans, vhaut){
@@ -582,7 +596,7 @@ function calcVitesses(){
   const volet = document.querySelector('input[name="V_VOLET"]:checked')?.value || '0';
   const VIRAGE = vv('V_VIRAGE'), SECUR = vv('V_SECUR');
   const KMAX = vv('V_KMAX'), KTRANS = vv('V_KTRANS');
-  const VFE = vv('V_VFE'), VNO = vv('V_VNO'), VNE = vv('V_VNE');
+  const VFE = vv('V_VFE'), VNO = vv('V_VNO'), VNE = vv('V_VNE'), VA = vv('V_VA');
 
   // VS0 issues du VRAI manuel de vol F-HREJ (Édition n°1, table "Vitesse de décrochage : Vi en km/h au poids total"),
   // poids total = 1050 kg. Vérifiées : la formule ci-dessous retombe sur les valeurs du manuel à 30° et 60° à ±0,3kt près.
@@ -643,10 +657,14 @@ function calcVitesses(){
   html += `<div class="kvline"><span class="k">Fin du second régime (1,3×VS)</span><span class="v">${V_2eregime} kt</span></div>`;
   html += `<div class="kvline"><span class="k">Fin de la plage de vol lent (1,45×VS)</span><span class="v">${V_hautvollent} kt</span></div>`;
 
+  html += `<div class="section-title">💨 VA — vitesse de manœuvre</div>`;
+  html += `<div class="kvline"><span class="k">Ne pas dépasser en manœuvres brusques / air turbulent</span><span class="v">${VA} kt</span></div>`;
+  html += `<div class="notes" style="margin-top:0">Au-delà de VA, une commande brutale (gouverne, rafale) peut dépasser le facteur de charge limite avant même que l'avion ne décroche pour l'absorber. VA diminue avec la masse — 116 kt donnée ici est valable à la masse maximale (1050 kg).</div>`;
+
   html += `<div class="section-title">🪂 VBG — meilleure finesse (référence)</div>`;
   html += `<div class="kvline"><span class="k">VBG</span><span class="v">${VBG.toFixed(1)} kt</span></div>`;
 
-  document.getElementById('p2_gauge').innerHTML = buildASIGauge(vsAt('0'), vsAt('2'), VFE, VNO, VNE) + buildRegimeBar(VS_config, V_2eregime, V_hautvollent);
+  document.getElementById('p2_gauge').innerHTML = buildASIGauge(vsAt('0'), vsAt('2'), VFE, VNO, VNE, VA) + buildRegimeBar(VS_config, V_2eregime, V_hautvollent);
   document.getElementById('p2_out').innerHTML = html;
 }
 
