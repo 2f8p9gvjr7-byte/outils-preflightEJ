@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dr400-instructeur-v8';
+const CACHE_NAME = 'dr400-instructeur-v9';
 const ASSETS = [
   './',
   './index.html',

@@ -156,7 +156,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 </div>
 
-<!-- ONGLET 2 : Vitesses caractéristiques (VBG, VS, Vol lent) -->
+<!-- ONGLET 2 : Vitesses caractéristiques (VFM, VS, Vol lent) -->
 <div id="p2" class="page">
   <fieldset>
     <legend>⚖️ Masse</legend>
@@ -621,8 +621,8 @@ function calcVitesses(){
   const V_2eregime  = Math.round(KTRANS * vsAt(volet));
   const V_hautvollent = Math.round(KMAX * vsAt(volet));
 
-  // 4. VBG — vitesse de meilleure finesse (pour référence, priorité basse)
-  const VBG = 78 * Math.sqrt(M / 1050);
+  // 4. VFM — vitesse de finesse max (pour référence, priorité basse)
+  const VFM = 78 * Math.sqrt(M / 1050);
 
   // 5. Vitesses club fixes, avec majoration vent sur la finale (½ vent moyen + rafales)
   const VENTMOY = vv('V_VENTMOY'), RAFALE = vv('V_RAFALE');
@@ -661,8 +661,8 @@ function calcVitesses(){
   html += `<div class="kvline"><span class="k">Ne pas dépasser en manœuvres brusques / air turbulent</span><span class="v">${VA} kt</span></div>`;
   html += `<div class="notes" style="margin-top:0">Au-delà de VA, une commande brutale (gouverne, rafale) peut dépasser le facteur de charge limite avant même que l'avion ne décroche pour l'absorber. VA diminue avec la masse — 116 kt donnée ici est valable à la masse maximale (1050 kg).</div>`;
 
-  html += `<div class="section-title">🪂 VBG — meilleure finesse (référence)</div>`;
-  html += `<div class="kvline"><span class="k">VBG</span><span class="v">${VBG.toFixed(1)} kt</span></div>`;
+  html += `<div class="section-title">🪂 VFM — finesse max (référence)</div>`;
+  html += `<div class="kvline"><span class="k">VFM</span><span class="v">${VFM.toFixed(1)} kt</span></div>`;
 
   document.getElementById('p2_gauge').innerHTML = buildASIGauge(vsAt('0'), vsAt('2'), VFE, VNO, VNE, VA) + buildRegimeBar(VS_config, V_2eregime, V_hautvollent);
   document.getElementById('p2_out').innerHTML = html;
