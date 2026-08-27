@@ -89,6 +89,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div class="tab" data-page="p3">3·Tour piste</div>
   <div class="tab" data-page="p6">4·Altitudes</div>
   <div class="tab" data-page="p5">5·ROC densité</div>
+  <div class="tab" data-page="p7">6·Vx/Vy</div>
 </div>
 
 <!-- ONGLET 1 : squelette, en attente des futurs outils -->
@@ -286,6 +287,43 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </div>
 </div>
 
+<!-- ONGLET 7 : Vx / Vy — courbes interactives (modèle pédagogique) -->
+<div id="p7" class="page">
+  <fieldset>
+    <legend>🎯 Vitesses de référence (niveau de la mer)</legend>
+    <div class="row"><label>Vx — meilleur angle de montée</label><input id="X_VX" type="number" step="1" value="70"><span class="unit">kt</span></div>
+    <div class="row"><label>Vy — meilleur taux de montée</label><input id="X_VY" type="number" step="1" value="86"><span class="unit">kt</span></div>
+    <div class="notes" style="margin-top:0"><b>Manuel de vol DR400/160 (Édition n°1, 10-5-1972), §8 Montée :</b> meilleur angle (1er cran de volets) 130 km/h ≈ <b>70 kt</b> · montée optimum (volets rentrés) 160 km/h ≈ <b>86 kt</b>. Le modèle recale les courbes pour que le maximum d'excédent de <b>poussée</b> tombe exactement sur votre Vx, et le maximum d'excédent de <b>puissance</b> sur votre Vy.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⛰️ Altitude simulée</legend>
+    <div class="row"><label>Plafond pratique</label><input id="X_CEIL" type="number" step="100" value="14500"><span class="unit">ft</span></div>
+    <div class="row" style="border:none"><label>Altitude-pression</label><span class="ref" id="X_ALT_LBL" style="width:auto">0 ft</span></div>
+    <input id="X_ALT" type="range" min="0" max="14500" step="250" value="0" style="width:100%;accent-color:var(--accent);margin:2px 0 6px">
+    <div class="notes" style="margin-top:0">Le plafond se remplit automatiquement depuis la masse de l'onglet Partagé (interpolation POH de l'onglet ROC) — modifiable ici. En montant, la poussée disponible diminue : <b>Vx augmente, Vy diminue</b>, et les deux convergent au plafond.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>📈 Courbes affichées</legend>
+    <div class="runway-toggle" style="margin:0">
+      <label><input type="radio" name="X_CHART" value="force" checked><span>Force (Vx)</span></label>
+      <label><input type="radio" name="X_CHART" value="puissance"><span>Puissance (Vy)</span></label>
+    </div>
+  </fieldset>
+
+  <div id="p7_legend"></div>
+  <div id="p7_graph" class="result" style="padding:8px 6px"></div>
+  <div id="p7_out" class="result"></div>
+  <div class="section-title">Convergence Vx / Vy avec l'altitude</div>
+  <div id="p7_conv" class="result" style="padding:8px 6px"></div>
+
+  <div class="notes">
+    <b>Principe :</b> Vx = vitesse du plus grand écart entre poussée disponible et traînée (excédent de <b>force</b> → meilleur angle). Vy = vitesse du plus grand écart entre puissance disponible et puissance requise (excédent de <b>puissance</b> = force × vitesse → meilleur taux). La multiplication par la vitesse décale le point optimal vers la droite, d'où Vy &gt; Vx.<br>
+    <b>Modèle pédagogique qualitatif</b> (traînée = A/V² + B·V², poussée disponible linéaire, hélice à pas fixe) recalé sur vos Vx/Vy — illustre le mécanisme, ne remplace pas les abaques POH. <b>Usage non certifié.</b>
+  </div>
+</div>
+
 
 <script>
 // ── Persistance locale des variables saisies ──
@@ -356,6 +394,14 @@ function syncMasseToTabs(){
   if(vm && !vm.dataset.manual) vm.value = val;
   const rm = document.getElementById('R_M');
   if(rm && !rm.dataset.manual) rm.value = val;
+  // Plafond de l'onglet Vx/Vy : rempli depuis la masse via l'interpolation POH (onglet ROC),
+  // sauf si l'utilisateur l'a modifié à la main
+  const xc = document.getElementById('X_CEIL');
+  const mNum = +val;
+  if(xc && !xc.dataset.manual && mNum > 0){
+    xc.value = Math.round(poh_ceiling(mNum));
+    if(typeof calcVxVy === 'function' && document.getElementById('p7_graph')) calcVxVy();
+  }
 }
 
 // Propage QNH/OAT saisis dans l'onglet Partagé vers l'onglet Altitudes
@@ -947,6 +993,220 @@ function buildAltitudeBar(items){
   return `<div class="result">${html}</div>`;
 }
 
+// ── Onglet 7 : Vx / Vy interactif (modèle pédagogique recalé sur les vitesses saisies) ──
+// Modèle sans dimension : traînée D(u)=0,5/u²+0,5u² · poussée dispo TA(u)=1,9−0,55u.
+// L'axe des vitesses est ensuite recalé linéairement pour que argmax(TA−D)=Vx saisi
+// et argmax(TA·u−D·u)=Vy saisi. L'altitude réduit TA d'un facteur f, jusqu'à la
+// tangence (excédent nul) au plafond — les deux vitesses convergent alors.
+function xy_model(VX0, VY0){
+  const U0 = 0.62, U1 = 1.5, N = 160;
+  const us = [], D = [], TA = [], PR = [], PA = [];
+  for(let i = 0; i <= N; i++){
+    const u = U0 + (U1 - U0) * i / N;
+    const d = 0.5/(u*u) + 0.5*u*u;
+    const t = 1.9 - 0.55*u;
+    us.push(u); D.push(d); TA.push(t); PR.push(d*u); PA.push(t*u);
+  }
+  let fceil = Infinity;
+  for(let i = 0; i < us.length; i++) fceil = Math.min(fceil, D[i]/TA[i]);
+  const step = us[1] - us[0];
+  function argmaxU(arr){
+    let k = 0;
+    for(let i = 1; i < arr.length; i++) if(arr[i] > arr[k]) k = i;
+    if(k === 0 || k === arr.length - 1) return us[k];
+    const y0 = arr[k-1], y1 = arr[k], y2 = arr[k+1];
+    const den = y0 - 2*y1 + y2;
+    const off = den === 0 ? 0 : 0.5*(y0 - y2)/den;
+    return us[k] + off*step;
+  }
+  function speedsAt(f){
+    const ex = us.map((u,i) => f*TA[i] - D[i]);
+    const ep = us.map((u,i) => f*PA[i] - PR[i]);
+    return [argmaxU(ex), argmaxU(ep)];
+  }
+  const [ux0, uy0] = speedsAt(1);
+  const a = (VY0 - VX0)/(uy0 - ux0), b = VX0 - a*ux0;
+  return { us, D, TA, PR, PA, fceil, speedsAt, kt: u => a*u + b };
+}
+
+function xy_svgCurves(m, f, mode, VxH, VyH){
+  const W = 340, Hh = 232, L = 10, Rm = 8, T = 18, B = 26;
+  const req = mode === 'force' ? m.D : m.PR;
+  const av = (mode === 'force' ? m.TA : m.PA).map(vv2 => vv2 * f);
+  const us = m.us, kt = m.kt;
+  const xmin = kt(us[0]), xmax = kt(us[us.length-1]);
+  const ymax = Math.max(...req, ...av) * 1.08;
+  const X = k => L + (k - xmin)/(xmax - xmin)*(W - L - Rm);
+  const Y = val => T + (1 - val/ymax)*(Hh - T - B);
+  const pts = arr => us.map((u,i) => `${X(kt(u)).toFixed(1)},${Y(arr[i]).toFixed(1)}`).join(' ');
+
+  // Zone d'excédent (disponible > requis) : c'est elle qui fait monter l'avion
+  let zone = '';
+  const idx = [];
+  for(let i = 0; i < us.length; i++) if(av[i] > req[i]) idx.push(i);
+  if(idx.length > 2){
+    const fwd = idx.map(i => `${X(kt(us[i])).toFixed(1)},${Y(av[i]).toFixed(1)}`).join(' ');
+    const back = idx.slice().reverse().map(i => `${X(kt(us[i])).toFixed(1)},${Y(req[i]).toFixed(1)}`).join(' ');
+    zone = `<polygon points="${fwd} ${back}" fill="rgba(217,128,138,0.15)" stroke="none"/>`;
+  }
+
+  // Axe X gradué tous les 10 kt
+  let axis = `<line x1="${L}" y1="${(Hh-B).toFixed(1)}" x2="${W-Rm}" y2="${(Hh-B).toFixed(1)}" stroke="var(--border-2)" stroke-width="1.5"/>`;
+  for(let k = Math.ceil(xmin/10)*10; k <= xmax; k += 10){
+    const x = X(k).toFixed(1);
+    axis += `<line x1="${x}" y1="${(Hh-B).toFixed(1)}" x2="${x}" y2="${(Hh-B+4).toFixed(1)}" stroke="var(--border-2)"/>`;
+    axis += `<text x="${x}" y="${(Hh-B+16).toFixed(1)}" text-anchor="middle" font-size="10" fill="var(--text-dim)">${k}</text>`;
+  }
+  axis += `<text x="${W-Rm}" y="${(Hh-1).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-dim)">kt</text>`;
+
+  function marker(ktv, color, label, solid, dy){
+    if(ktv < xmin || ktv > xmax) return '';
+    const x = X(ktv).toFixed(1);
+    let s = `<line x1="${x}" y1="${T}" x2="${x}" y2="${(Hh-B).toFixed(1)}" stroke="${color}" stroke-width="${solid ? 2 : 1.5}"${solid ? '' : ' stroke-dasharray="4 4" opacity="0.55"'}/>`;
+    s += `<text x="${x}" y="${(T - 5 + dy).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${color}"${solid ? '' : ' opacity="0.8"'}>${label} ${Math.round(ktv)}</text>`;
+    return s;
+  }
+  const close = Math.abs(VyH - VxH) < 8;   // près du plafond, on évite la superposition des étiquettes
+  let marks;
+  if(mode === 'force'){
+    marks = marker(VxH, '#4ade80', 'Vx', true, 0) + marker(VyH, '#fbbf24', 'Vy', false, close ? 12 : 0);
+  } else {
+    marks = marker(VyH, '#fbbf24', 'Vy', true, 0) + marker(VxH, '#4ade80', 'Vx', false, close ? 12 : 0);
+  }
+
+  const reqLine = `<polyline points="${pts(req)}" fill="none" stroke="#9aa8c2" stroke-width="2.5"/>`;
+  const avLine = `<polyline points="${pts(av)}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`;
+
+  return `<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;display:block">${zone}${axis}${reqLine}${avLine}${marks}</svg>`;
+}
+
+function xy_svgConv(m, CEIL, ALT, VxH, VyH){
+  const W = 340, Hh = 212, L = 34, Rm = 12, T = 14, B = 26;
+  const steps = 28;
+  const vx = [], vy = [];
+  for(let i = 0; i <= steps; i++){
+    const h = CEIL * i / steps;
+    const f = 1 - (1 - m.fceil) * (h / CEIL);
+    const [ux, uy] = m.speedsAt(f);
+    vx.push(m.kt(ux)); vy.push(m.kt(uy));
+  }
+  const ymin = Math.min(...vx) - 3, ymax = Math.max(...vy) + 3;
+  const X = h => L + h/CEIL*(W - L - Rm);
+  const Y = k => T + (1 - (k - ymin)/(ymax - ymin))*(Hh - T - B);
+  const line = arr => arr.map((k,i) => `${X(CEIL*i/steps).toFixed(1)},${Y(k).toFixed(1)}`).join(' ');
+
+  // Grille horizontale : multiples de 5 kt
+  let grid = '';
+  for(let k = Math.ceil(ymin/5)*5; k <= ymax; k += 5){
+    const y = Y(k).toFixed(1);
+    grid += `<line x1="${L}" y1="${y}" x2="${W-Rm}" y2="${y}" stroke="rgba(58,82,133,0.35)" stroke-width="1"/>`;
+    grid += `<text x="${L-4}" y="${(+y+3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-dim)">${k}</text>`;
+  }
+  // Axe X : altitude
+  let axis = `<line x1="${L}" y1="${(Hh-B).toFixed(1)}" x2="${W-Rm}" y2="${(Hh-B).toFixed(1)}" stroke="var(--border-2)" stroke-width="1.5"/>`;
+  const stepAlt = CEIL > 12000 ? 5000 : (CEIL > 6000 ? 2000 : 1000);
+  for(let h = 0; h <= CEIL; h += stepAlt){
+    const x = X(h).toFixed(1);
+    axis += `<line x1="${x}" y1="${(Hh-B).toFixed(1)}" x2="${x}" y2="${(Hh-B+4).toFixed(1)}" stroke="var(--border-2)"/>`;
+    axis += `<text x="${x}" y="${(Hh-B+15).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--text-dim)">${h >= 1000 ? (h/1000) + 'k' : h}</text>`;
+  }
+  axis += `<text x="${W-Rm}" y="${(Hh-1).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-dim)">ft</text>`;
+  axis += `<text x="${L-22}" y="${T+4}" text-anchor="start" font-size="9" fill="var(--text-dim)">kt</text>`;
+
+  // Repère : altitude simulée courante
+  const xa = X(Math.min(ALT, CEIL)).toFixed(1);
+  const cursor = `<line x1="${xa}" y1="${T}" x2="${xa}" y2="${(Hh-B).toFixed(1)}" stroke="var(--accent-2)" stroke-width="1.5" stroke-dasharray="3 3"/>` +
+    `<circle cx="${xa}" cy="${Y(VxH).toFixed(1)}" r="4" fill="#4ade80"/>` +
+    `<circle cx="${xa}" cy="${Y(VyH).toFixed(1)}" r="4" fill="#fbbf24"/>`;
+
+  // Étiquettes de courbe (côté gauche, écartées verticalement)
+  const lbls = `<text x="${(L+5).toFixed(1)}" y="${(Y(vx[0])+14).toFixed(1)}" font-size="10" font-weight="700" fill="#4ade80">Vx</text>` +
+    `<text x="${(L+5).toFixed(1)}" y="${(Y(vy[0])-8).toFixed(1)}" font-size="10" font-weight="700" fill="#fbbf24">Vy</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;display:block">${grid}${axis}` +
+    `<polyline points="${line(vx)}" fill="none" stroke="#4ade80" stroke-width="2.5"/>` +
+    `<polyline points="${line(vy)}" fill="none" stroke="#fbbf24" stroke-width="2.5"/>` +
+    `${cursor}${lbls}</svg>`;
+}
+
+function calcVxVy(){
+  const VX0 = vv('X_VX'), VY0 = vv('X_VY');
+  const CEIL = Math.max(1000, vv('X_CEIL') || 14500);
+  const altEl = document.getElementById('X_ALT');
+  altEl.max = CEIL;
+  const ALT = Math.min(+altEl.value || 0, CEIL);
+  altEl.value = ALT;
+  document.getElementById('X_ALT_LBL').textContent = Math.round(ALT).toLocaleString('fr-FR') + ' ft';
+
+  const legendEl = document.getElementById('p7_legend');
+  const gEl = document.getElementById('p7_graph');
+  const cEl = document.getElementById('p7_conv');
+  const outEl = document.getElementById('p7_out');
+
+  if(VX0 <= 0 || VY0 <= 0){
+    outEl.innerHTML = `<div class="banner-warn">⚠️ Saisissez Vx et Vy (valeurs du manuel de vol) pour tracer les courbes.</div>`;
+    legendEl.innerHTML = ''; gEl.innerHTML = ''; cEl.innerHTML = '';
+    return;
+  }
+  if(VY0 <= VX0){
+    outEl.innerHTML = `<div class="banner-warn">⚠️ Vy doit être strictement supérieure à Vx (par définition, le meilleur taux est plus rapide que le meilleur angle).</div>`;
+    legendEl.innerHTML = ''; gEl.innerHTML = ''; cEl.innerHTML = '';
+    return;
+  }
+
+  const mode = document.querySelector('input[name="X_CHART"]:checked')?.value || 'force';
+  const m = xy_model(VX0, VY0);
+  const f = 1 - (1 - m.fceil) * (ALT / CEIL);
+  const [ux, uy] = m.speedsAt(f);
+  const VxH = m.kt(ux), VyH = m.kt(uy);
+
+  const reqLbl = mode === 'force' ? 'Traînée (poussée requise)' : 'Puissance requise';
+  const avLbl = mode === 'force' ? 'Poussée disponible' : 'Puissance disponible';
+  legendEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--text-dim);margin:8px 2px 0">
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:3px;background:var(--accent);border-radius:2px"></span>${avLbl}</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:3px;background:#9aa8c2;border-radius:2px"></span>${reqLbl}</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:rgba(217,128,138,0.3);border-radius:2px"></span>Excédent</span>
+  </div>`;
+  gEl.innerHTML = xy_svgCurves(m, f, mode, VxH, VyH);
+  cEl.innerHTML = xy_svgConv(m, CEIL, ALT, VxH, VyH);
+
+  let html = '';
+  if(CEIL - ALT < 300){
+    html += `<div class="banner-warn">⚠️ Au plafond : excédent quasi nul — Vx ≈ Vy, plus aucune capacité de montée.</div>`;
+  }
+  html += `<div class="kvline"><span class="k">Vx à ${Math.round(ALT).toLocaleString('fr-FR')} ft (modèle)</span><span class="v" style="color:#4ade80">${Math.round(VxH)} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Vy à ${Math.round(ALT).toLocaleString('fr-FR')} ft (modèle)</span><span class="v" style="color:#fbbf24">${Math.round(VyH)} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Écart Vy − Vx</span><span class="v">${Math.max(0, Math.round(VyH - VxH))} kt</span></div>`;
+  outEl.innerHTML = html;
+}
+
+// Saisie en direct + persistance des champs Vx/Vy
+['X_VX','X_VY','X_CEIL','X_ALT'].forEach(id => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const saved = localStorage.getItem('outils2_field_' + id);
+  if(saved !== null){
+    el.value = saved;
+    if(id === 'X_CEIL') el.dataset.manual = '1';
+  }
+  el.addEventListener('input', function(){
+    localStorage.setItem('outils2_field_' + id, this.value);
+    if(id === 'X_CEIL') this.dataset.manual = '1';
+    calcVxVy();
+  });
+});
+document.querySelectorAll('input[name="X_CHART"]').forEach(r => {
+  r.addEventListener('change', function(){
+    localStorage.setItem('outils2_field_X_CHART', this.value);
+    calcVxVy();
+  });
+});
+const savedXChart = localStorage.getItem('outils2_field_X_CHART');
+if(savedXChart){
+  const r = document.querySelector(`input[name="X_CHART"][value="${savedXChart}"]`);
+  if(r) r.checked = true;
+}
+
 // ── Navigation onglets (prêt pour l'ajout de nouveaux onglets) ──
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -958,6 +1218,7 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 initShared();
+calcVxVy();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {

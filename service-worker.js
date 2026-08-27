@@ -1,6 +1,5 @@
-const CACHE_NAME = 'dr400-instructeur-v9';
+const CACHE_NAME = 'dr400-calculs-divers-v2';
 const ASSETS = [
-  './',
   './index.html',
   './manifest.json',
   './icon-192.png',
