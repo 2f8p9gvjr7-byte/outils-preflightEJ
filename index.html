@@ -1053,7 +1053,7 @@ function xy_window(m){
   return { xmin, xmax };
 }
 
-function xy_svgCurves(m, f, mode, VxH, VyH, win, Vsel){
+function xy_svgCurves(m, f, mode, VxH, VyH, win, Vsel, vs1){
   const W = 340, Hh = 232, L = 10, Rm = 8, T = 18, B = 26;
   const reqAll = mode === 'force' ? m.D : m.PR;
   const avAll = (mode === 'force' ? m.TA : m.PA).map(vv2 => vv2 * f);
@@ -1071,6 +1071,17 @@ function xy_svgCurves(m, f, mode, VxH, VyH, win, Vsel){
   const X = k => L + (k - xmin)/(xmax - xmin)*(W - L - Rm);
   const Y = val => T + (1 - val/ymax)*(Hh - T - B);
   const pts = arr => vis.map((gi, j) => `${X(kt(us[gi])).toFixed(1)},${Y(arr[j]).toFixed(1)}`).join(' ');
+
+  // Zone de décrochage : sous VS1, l'avion ne vole plus — le modèle n'y est pas valable
+  let stall = '';
+  if(vs1 > xmin){
+    const xs = X(Math.min(vs1, xmax)).toFixed(1);
+    stall = `<rect x="${L}" y="${T}" width="${(xs - L).toFixed(1)}" height="${(Hh - T - B).toFixed(1)}" fill="rgba(248,113,113,0.13)"/>`;
+    if(vs1 <= xmax){
+      stall += `<line x1="${xs}" y1="${T}" x2="${xs}" y2="${(Hh-B).toFixed(1)}" stroke="#f87171" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+      stall += `<text x="${xs}" y="${(T + 12).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#f87171">VS1 ${Math.round(vs1)}</text>`;
+    }
+  }
 
   // Zone d'excédent (disponible > requis) : c'est elle qui fait monter l'avion
   let zone = '';
@@ -1123,7 +1134,7 @@ function xy_svgCurves(m, f, mode, VxH, VyH, win, Vsel){
     }
   }
 
-  return `<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;display:block">${zone}${axis}${reqLine}${avLine}${cursor}${marks}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;display:block">${stall}${zone}${axis}${reqLine}${avLine}${cursor}${marks}</svg>`;
 }
 
 function xy_svgConv(m, CEIL, ALT, VxH, VyH){
@@ -1225,6 +1236,12 @@ function calcVxVy(){
   const masseVal = +document.getElementById('shared_masse')?.value || vv('R_M');
   const rocMax = masseVal > 0 ? Math.max(0, (poh_roc_sl(masseVal) - poh_reduction(masseVal) * ALT / 1000) * MS_TO_FPM) : null;
 
+  // VS1 (lisse) à la masse courante — même méthode que l'onglet Vitesses (VS0 manuel 55,6 kt à 1050 kg).
+  // Sans masse renseignée : pleine masse (cas le plus défavorable, VS1 la plus haute).
+  const wmax = vv('V_WMAX') || 1050;
+  const massVS = masseVal > 0 ? masseVal : wmax;
+  const VS1 = 55.6 * Math.sqrt(massVS / wmax);
+
   // Creux de la courbe de puissance requise = frontière du second régime (modèle)
   let kmin = 0;
   for(let i = 1; i < m.PR.length; i++) if(m.PR[i] < m.PR[kmin]) kmin = i;
@@ -1237,7 +1254,7 @@ function calcVxVy(){
     <span style="display:flex;align-items:center;gap:5px"><span style="width:16px;height:3px;background:#9aa8c2;border-radius:2px"></span>${reqLbl}</span>
     <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:rgba(217,128,138,0.3);border-radius:2px"></span>Excédent</span>
   </div>`;
-  gEl.innerHTML = xy_svgCurves(m, f, mode, VxH, VyH, win, VSEL);
+  gEl.innerHTML = xy_svgCurves(m, f, mode, VxH, VyH, win, VSEL, VS1);
   cEl.innerHTML = xy_svgConv(m, CEIL, ALT, VxH, VyH);
 
   let html = '';
@@ -1247,11 +1264,17 @@ function calcVxVy(){
   html += `<div class="kvline"><span class="k">Vx à ${Math.round(ALT).toLocaleString('fr-FR')} ft (modèle)</span><span class="v" style="color:#4ade80">${Math.round(VxH)} kt</span></div>`;
   html += `<div class="kvline"><span class="k">Vy à ${Math.round(ALT).toLocaleString('fr-FR')} ft (modèle)</span><span class="v" style="color:#fbbf24">${Math.round(VyH)} kt</span></div>`;
   html += `<div class="kvline"><span class="k">Écart Vy − Vx</span><span class="v">${Math.max(0, Math.round(VyH - VxH))} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">VS1 (lisse, ${Math.round(massVS)} kg${masseVal > 0 ? '' : ' — pleine masse par défaut'})</span><span class="v" style="color:#f87171">${Math.round(VS1)} kt</span></div>`;
 
   html += `<div class="section-title">🎛️ À ${Math.round(VSEL)} kt (curseur)</div>`;
-  if(ratio <= 0){
+  if(VSEL < VS1){
+    html += `<div class="banner-bad">🛑 ${Math.round(VSEL)} kt est SOUS VS1 (${Math.round(VS1)} kt à ${Math.round(massVS)} kg) : avion décroché en lisse — le modèle n'est plus valable, aucun chiffre affiché.</div>`;
+  } else if(ratio <= 0){
     html += `<div class="banner-warn">⚠️ Aucun excédent à cette vitesse — pas de montée possible (modèle).</div>`;
   } else {
+    if(VSEL < 1.2 * VS1){
+      html += `<div class="banner-warn">⚠️ Entre VS1 et 1,2×VS1 (${Math.round(1.2*VS1)} kt) : proche du décrochage — la traînée réelle grimpe bien plus vite que le modèle, ces chiffres sont optimistes.</div>`;
+    }
     html += `<div class="kvline"><span class="k">Capacité de montée conservée</span><span class="v">${Math.round(ratio * 100)} %</span></div>`;
     if(rocMax !== null){
       html += `<div class="kvline"><span class="k">Taux estimé (POH std, ${Math.round(masseVal)} kg)</span><span class="v">${Math.round(ratio * rocMax)} ft/min</span></div>`;
