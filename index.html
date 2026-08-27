@@ -1031,22 +1031,39 @@ function xy_model(VX0, VY0){
 
 function xy_svgCurves(m, f, mode, VxH, VyH){
   const W = 340, Hh = 232, L = 10, Rm = 8, T = 18, B = 26;
-  const req = mode === 'force' ? m.D : m.PR;
-  const av = (mode === 'force' ? m.TA : m.PA).map(vv2 => vv2 * f);
+  const reqAll = mode === 'force' ? m.D : m.PR;
+  const avAll = (mode === 'force' ? m.TA : m.PA).map(vv2 => vv2 * f);
   const us = m.us, kt = m.kt;
-  const xmin = kt(us[0]), xmax = kt(us[us.length-1]);
+
+  // Fenêtre d'affichage utile : autour des Vx/Vy saisis, jamais au-delà de la VNE
+  // (onglet Vitesses, 166 kt par défaut) — inutile de tracer des vitesses interdites.
+  const VNE = vv('V_VNE') || 166;
+  const VX0 = vv('X_VX'), VY0 = vv('X_VY');
+  let xmin = Math.floor((VX0 - 25)/10)*10;
+  let xmax = Math.min(Math.ceil((VY0 + 40)/10)*10, Math.floor(VNE/10)*10);
+  xmin = Math.max(xmin, Math.ceil(kt(us[0])/1));
+  xmax = Math.min(xmax, Math.floor(kt(us[us.length-1])/1));
+  if(xmax - xmin < 30){ xmin = Math.max(kt(us[0]), VX0 - 20); xmax = Math.min(kt(us[us.length-1]), VY0 + 25); }
+
+  // Indices du modèle visibles dans la fenêtre
+  const vis = [];
+  for(let i = 0; i < us.length; i++){ const k = kt(us[i]); if(k >= xmin && k <= xmax) vis.push(i); }
+  if(vis.length < 3) for(let i = 0; i < us.length; i++) vis.push(i);
+  const req = vis.map(i => reqAll[i]);
+  const av = vis.map(i => avAll[i]);
+
   const ymax = Math.max(...req, ...av) * 1.08;
   const X = k => L + (k - xmin)/(xmax - xmin)*(W - L - Rm);
   const Y = val => T + (1 - val/ymax)*(Hh - T - B);
-  const pts = arr => us.map((u,i) => `${X(kt(u)).toFixed(1)},${Y(arr[i]).toFixed(1)}`).join(' ');
+  const pts = arr => vis.map((gi, j) => `${X(kt(us[gi])).toFixed(1)},${Y(arr[j]).toFixed(1)}`).join(' ');
 
   // Zone d'excédent (disponible > requis) : c'est elle qui fait monter l'avion
   let zone = '';
   const idx = [];
-  for(let i = 0; i < us.length; i++) if(av[i] > req[i]) idx.push(i);
+  for(let j = 0; j < vis.length; j++) if(av[j] > req[j]) idx.push(j);
   if(idx.length > 2){
-    const fwd = idx.map(i => `${X(kt(us[i])).toFixed(1)},${Y(av[i]).toFixed(1)}`).join(' ');
-    const back = idx.slice().reverse().map(i => `${X(kt(us[i])).toFixed(1)},${Y(req[i]).toFixed(1)}`).join(' ');
+    const fwd = idx.map(j => `${X(kt(us[vis[j]])).toFixed(1)},${Y(av[j]).toFixed(1)}`).join(' ');
+    const back = idx.slice().reverse().map(j => `${X(kt(us[vis[j]])).toFixed(1)},${Y(req[j]).toFixed(1)}`).join(' ');
     zone = `<polygon points="${fwd} ${back}" fill="rgba(217,128,138,0.15)" stroke="none"/>`;
   }
 
