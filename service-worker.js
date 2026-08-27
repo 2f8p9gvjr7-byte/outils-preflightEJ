@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dr400-calculs-divers-v3';
+const CACHE_NAME = 'dr400-calculs-divers-v4';
 const ASSETS = [
   './index.html',
   './manifest.json',
