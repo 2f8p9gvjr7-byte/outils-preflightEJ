@@ -203,6 +203,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </fieldset>
 
   <button class="btn" onclick="calcVitesses()">Calculer les vitesses</button>
+  <div id="p2_stale"></div>
   <div id="p2_gauge"></div>
   <div id="p2_out" class="result"></div>
 </div>
@@ -227,6 +228,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </fieldset>
 
   <button class="btn" onclick="calcTourPiste()">Calculer le tour de piste</button>
+  <div id="p3_stale"></div>
   <div id="p3_out" class="result"></div>
   <div id="p3_diagram" class="result" style="margin-top:10px"></div>
 </div>
@@ -254,6 +256,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </fieldset>
 
   <button class="btn" onclick="calcAltitudes()">Calculer les altitudes</button>
+  <div id="p6_stale"></div>
   <div id="p6_bar"></div>
   <div id="p6_out" class="result"></div>
 </div>
@@ -279,6 +282,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </fieldset>
 
   <button class="btn" onclick="calcROCDensite()">Calculer ROC et plafond</button>
+  <div id="p5_stale"></div>
   <div id="p5_out" class="result"></div>
 
   <div class="notes" style="margin-top:8px">
@@ -1326,6 +1330,94 @@ if(savedXChart){
   if(r) r.checked = true;
 }
 
+// ── Persistance des RÉSULTATS de calcul + alerte "paramètres modifiés" ──
+// Les résultats restent affichés à la réouverture de l'app (utile en vol : pas besoin
+// de relancer le calcul). Si un paramètre change ensuite, un bandeau invite à recalculer,
+// pour ne jamais lire des chiffres issus d'anciennes données.
+const CALC_TABS = {
+  p2: { fn:'calcVitesses', label:'Calculer les vitesses',
+        inputs:['V_M','V_WMAX','V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','V_VENTMOY','V_RAFALE'],
+        radios:['V_VOLET'], outs:['p2_gauge','p2_out'], stale:'p2_stale' },
+  p3: { fn:'calcTourPiste', label:'Calculer le tour de piste',
+        inputs:['T_QFU','T_XNM','T_VG'], radios:['T_MD'],
+        outs:['p3_out','p3_diagram'], stale:'p3_stale' },
+  p6: { fn:'calcAltitudes', label:'Calculer les altitudes',
+        inputs:['A_ALT','A_FL','A_QNH','A_OAT','shared_obstacle'], radios:['A_MODE'],
+        outs:['p6_bar','p6_out'], stale:'p6_stale' },
+  p5: { fn:'calcROCDensite', label:'Calculer ROC et plafond',
+        inputs:['R_M','R_PA','R_OAT'], radios:[],
+        outs:['p5_out'], stale:'p5_stale' }
+};
+
+function calcSignature(key){
+  const cfg = CALC_TABS[key];
+  const vals = cfg.inputs.map(id => (document.getElementById(id)?.value ?? ''));
+  const rads = cfg.radios.map(n => (document.querySelector(`input[name="${n}"]:checked`)?.value ?? ''));
+  return vals.concat(rads).join('|');
+}
+
+function fmtStamp(ts){
+  const d = new Date(ts);
+  if(isNaN(d)) return '';
+  const p2 = n => String(n).padStart(2,'0');
+  return `${p2(d.getDate())}/${p2(d.getMonth()+1)} à ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+
+function saveCalc(key){
+  const cfg = CALC_TABS[key];
+  const html = {};
+  cfg.outs.forEach(id => { const el = document.getElementById(id); if(el) html[id] = el.innerHTML; });
+  try{
+    localStorage.setItem('outils2_calc_' + key, JSON.stringify({ sig: calcSignature(key), ts: Date.now(), html }));
+  }catch(e){ /* quota atteint : le calcul reste affiché, seule la sauvegarde échoue */ }
+  refreshStale(key);
+}
+
+function restoreCalc(key){
+  const cfg = CALC_TABS[key];
+  let data;
+  try{ data = JSON.parse(localStorage.getItem('outils2_calc_' + key) || 'null'); }catch(e){ data = null; }
+  if(!data || !data.html) return;
+  cfg.outs.forEach(id => { const el = document.getElementById(id); if(el && data.html[id] != null) el.innerHTML = data.html[id]; });
+}
+
+function refreshStale(key){
+  const cfg = CALC_TABS[key];
+  const box = document.getElementById(cfg.stale);
+  if(!box) return;
+  let data;
+  try{ data = JSON.parse(localStorage.getItem('outils2_calc_' + key) || 'null'); }catch(e){ data = null; }
+  if(!data){ box.innerHTML = ''; return; }
+  if(data.sig !== calcSignature(key)){
+    box.innerHTML = `<div class="banner-bad">⚠️ Paramètres modifiés depuis le calcul du ${fmtStamp(data.ts)} — appuyez sur « ${cfg.label} », les valeurs affichées ci-dessous sont périmées.</div>`;
+  } else {
+    box.innerHTML = `<div class="notes" style="margin-top:8px;text-align:center;border-style:solid">✅ Calcul du ${fmtStamp(data.ts)} — paramètres inchangés</div>`;
+  }
+}
+
+function refreshAllStale(){ Object.keys(CALC_TABS).forEach(refreshStale); }
+
+// Chaque fonction de calcul sauvegarde son résultat automatiquement
+Object.entries(CALC_TABS).forEach(([key, cfg]) => {
+  const orig = window[cfg.fn];
+  if(typeof orig !== 'function') return;
+  window[cfg.fn] = function(){ const r = orig.apply(this, arguments); saveCalc(key); return r; };
+  // Surveillance des paramètres : l'alerte apparaît dès qu'une valeur change
+  cfg.inputs.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', () => refreshStale(key));
+  });
+  cfg.radios.forEach(n => {
+    document.querySelectorAll(`input[name="${n}"]`).forEach(r => r.addEventListener('change', () => refreshStale(key)));
+  });
+});
+
+// La masse et le QNH/OAT partagés alimentent plusieurs onglets : ils peuvent périmer leurs calculs
+['shared_masse','shared_qnh','shared_oat'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', refreshAllStale);
+});
+
 // ── Navigation onglets (prêt pour l'ajout de nouveaux onglets) ──
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -1338,6 +1430,8 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 initShared();
 calcVxVy();
+Object.keys(CALC_TABS).forEach(restoreCalc);
+refreshAllStale();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
