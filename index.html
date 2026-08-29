@@ -622,7 +622,14 @@ function buildASIGauge(VS1, VS0, VFE, VNO, VNE, VA){
 
   const center = `<circle cx="${cx}" cy="${cy}" r="4" fill="var(--text-dim)"/><text x="${cx}" y="${cy+28}" text-anchor="middle" font-size="11" fill="var(--text-dim)">kt</text>`;
 
-  return `<div class="result" style="display:flex;justify-content:center"><svg viewBox="-75 -75 450 450" style="width:100%;max-width:380px">${svg}${center}${labelSvg}</svg></div>`;
+  return `<div class="result" style="display:flex;justify-content:center"><svg viewBox="-75 -45 450 350" style="width:100%;max-width:380px">${svg}${center}${labelSvg}</svg></div>`;
+}
+
+function buildStallBanner(vsv, volet, virage, M, secur){
+  return `<div class="banner-bad" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left">
+    <span style="font-size:12px;line-height:1.5">🌀 NE PAS DESCENDRE EN DESSOUS DE<br><span style="font-weight:400;color:#f8b4b4;font-size:11px">volets ${volet} · virage ${virage}° · ${Math.round(M)} kg${secur > 0 ? ' · marge +' + secur + ' %' : ''}</span></span>
+    <span style="font-size:26px;font-weight:700;white-space:nowrap">${vsv} kt</span>
+  </div>`;
 }
 
 function buildRegimeBar(vs, vtrans, vhaut){
@@ -717,7 +724,9 @@ function calcVitesses(){
   html += `<div class="section-title">🪂 VFM — finesse max (référence)</div>`;
   html += `<div class="kvline"><span class="k">VFM</span><span class="v">${VFM.toFixed(1)} kt</span></div>`;
 
-  document.getElementById('p2_gauge').innerHTML = buildASIGauge(vsAt('0'), vsAt('2'), VFE, VNO, VNE, VA) + buildRegimeBar(VS_config, V_2eregime, V_hautvollent);
+  document.getElementById('p2_gauge').innerHTML = buildASIGauge(vsAt('0'), vsAt('2'), VFE, VNO, VNE, VA)
+    + buildStallBanner(VS_virage, volet, VIRAGE, M, SECUR)
+    + buildRegimeBar(VS_config, V_2eregime, V_hautvollent);
   document.getElementById('p2_out').innerHTML = html;
 }
 
