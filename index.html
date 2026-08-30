@@ -87,9 +87,10 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div class="tab active" data-page="p1">1·Partagé</div>
   <div class="tab" data-page="p2">2·Vitesses</div>
   <div class="tab" data-page="p3">3·Tour piste</div>
-  <div class="tab" data-page="p6">4·Altitudes</div>
-  <div class="tab" data-page="p5">5·ROC densité</div>
-  <div class="tab" data-page="p7">6·Vx/Vy</div>
+  <div class="tab" data-page="p4">4·Vent travers</div>
+  <div class="tab" data-page="p6">5·Altitudes</div>
+  <div class="tab" data-page="p5">6·ROC densité</div>
+  <div class="tab" data-page="p7">7·Vx/Vy</div>
 </div>
 
 <!-- ONGLET 1 : squelette, en attente des futurs outils -->
@@ -231,6 +232,42 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div id="p3_stale"></div>
   <div id="p3_out" class="result"></div>
   <div id="p3_diagram" class="result" style="margin-top:10px"></div>
+</div>
+
+<!-- ONGLET 4 : Vent de travers (décomposition face/arrière + traversier) -->
+<div id="p4" class="page">
+  <fieldset>
+    <legend>🌬️ Vent observé</legend>
+    <div class="row"><label>Direction du vent (d'où il vient)</label><input id="W_DIR" type="number" step="10" value="0"><span class="unit">°</span></div>
+    <div class="row"><label>Vitesse du vent</label><input id="W_SPD" type="number" step="1" value="0"><span class="unit">kt</span></div>
+    <div class="row"><label>Rafales (max, 0 si aucune)</label><input id="W_GUST" type="number" step="1" value="0"><span class="unit">kt</span></div>
+    <div class="notes" style="margin-top:0">Direction <b>magnétique</b> et vitesse telles qu'annoncées (ATIS, tour, manche à air). Le vent vient DE cette direction.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🛫 Piste</legend>
+    <div class="row"><label>QFU (cap piste)</label><input id="W_QFU" type="number" step="1" value="70"><span class="unit">°</span></div>
+    <div class="row"><label>Vent traversier max (manuel / club)</label><input id="W_XLIM" type="number" step="1" value="0"><span class="unit">kt</span></div>
+    <div class="notes" style="margin-top:0">Le QFU se reprend automatiquement depuis l'onglet Tour de piste — modifiable ici. Renseignez la limite de vent traversier de votre manuel de vol ou de votre club pour obtenir un verdict (0 = pas de contrôle).</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🛬 Finale</legend>
+    <div class="row"><label>Vitesse d'approche (indiquée)</label><input id="W_VAPP" type="number" step="1" value="70"><span class="unit">kt</span></div>
+    <div class="row" style="border:none"><button type="button" class="btn-mini" onclick="resetVappAuto()">↺ Recalculer depuis le vent</button></div>
+    <div class="notes" style="margin-top:0">Calculée automatiquement à partir du vent : <b>70 kt club + ½ composante de face + effet des rafales</b>. Vous pouvez la modifier à la main — le bouton ci-dessus rétablit le calcul automatique. Sert à la correction de dérive et au cap de finale.</div>
+  </fieldset>
+
+  <button class="btn" onclick="calcVentTravers()">Calculer le vent de travers</button>
+  <div id="p4_stale"></div>
+  <div id="p4_final" class="result" style="padding:8px 6px"></div>
+  <div id="p4_diagram" class="result" style="padding:8px 6px"></div>
+  <div id="p4_out" class="result"></div>
+
+  <div class="notes">
+    <b>Formules :</b> angle = direction du vent − QFU · composante de face = vitesse × cos(angle) · composante traversière = vitesse × sin(angle). Au-delà de 90° d'écart, la composante de face devient un <b>vent arrière</b>.<br>
+    <b>Méthode de l'horloge (mental) :</b> 30° ≈ ½ du vent en traversier, 45° ≈ 0,7, 60° ≈ 0,9, 90° = tout le vent. <b>Usage non certifié — vérifiez vos limitations.</b>
+  </div>
 </div>
 
 <!-- ONGLET 6 : Altitude pression / densité / vraie, méthode OACI exacte -->
@@ -526,7 +563,8 @@ document.getElementById('R_OAT')?.addEventListener('input', function(){
 // (évite d'écrire un bloc dédié pour chacun — se recharge automatiquement à chaque ouverture)
 const GENERIC_PERSIST_IDS = [
   'V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','V_VENTMOY','V_RAFALE',
-  'T_QFU','T_XNM','T_VG'
+  'T_QFU','T_XNM','T_VG',
+  'W_DIR','W_SPD','W_GUST','W_QFU','W_XLIM','W_VAPP'
 ];
 function restoreGenericFields(){
   GENERIC_PERSIST_IDS.forEach(id => {
@@ -545,8 +583,7 @@ GENERIC_PERSIST_IDS.forEach(id => {
 });
 restoreGenericFields();
 
-document.getElementById('V_M')?.addEventListener('input', () => { document.getElementById('V_M').dataset.manual = '1'; });
-document.getElementById('R_M')?.addEventListener('input', () => { document.getElementById('R_M').dataset.manual = '1'; });
+document.getElementById('V_M')?.addEventListener('input', () => { document.getElementById('V_M').dataset.manual = '1'; });document.getElementById('R_M')?.addEventListener('input', () => { document.getElementById('R_M').dataset.manual = '1'; });
 document.getElementById('A_QNH')?.addEventListener('input', () => { document.getElementById('A_QNH').dataset.manual = '1'; });
 document.getElementById('A_OAT')?.addEventListener('input', () => { document.getElementById('A_OAT').dataset.manual = '1'; });
 document.getElementById('R_OAT')?.addEventListener('input', () => { document.getElementById('R_OAT').dataset.manual = '1'; });
@@ -1346,7 +1383,10 @@ const CALC_TABS = {
         outs:['p6_bar','p6_out'], stale:'p6_stale' },
   p5: { fn:'calcROCDensite', label:'Calculer ROC et plafond',
         inputs:['R_M','R_PA','R_OAT'], radios:[],
-        outs:['p5_out'], stale:'p5_stale' }
+        outs:['p5_out'], stale:'p5_stale' },
+  p4: { fn:'calcVentTravers', label:'Calculer le vent de travers',
+        inputs:['W_DIR','W_SPD','W_GUST','W_QFU','W_XLIM','W_VAPP'], radios:[],
+        outs:['p4_final','p4_diagram','p4_out'], stale:'p4_stale' }
 };
 
 function calcSignature(key){
@@ -1418,6 +1458,300 @@ Object.entries(CALC_TABS).forEach(([key, cfg]) => {
   if(el) el.addEventListener('input', refreshAllStale);
 });
 
+// ── Onglet 4 : Vent de travers ──
+// Arrondi au nœud, insensible aux artefacts de virgule flottante (sin 30° = 0,49999… en machine,
+// ce qui ferait afficher 7 kt au lieu de 8 pour 15 kt à 30°).
+function rkt(x){ return Math.round(+(Math.abs(x).toFixed(6))); }
+
+function buildWindSVG(qfu, wdir, spd, hw, xw){
+  const cx = 150, cy = 150, R = 112;
+  let svg = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--border-2)" stroke-width="1.5"/>`;
+  for(let d = 0; d < 360; d += 30){
+    const [ux,uy] = u_(d);
+    const inner = d % 90 === 0 ? R - 11 : R - 6;
+    svg += `<line x1="${(cx+inner*ux).toFixed(1)}" y1="${(cy+inner*uy).toFixed(1)}" x2="${(cx+R*ux).toFixed(1)}" y2="${(cy+R*uy).toFixed(1)}" stroke="var(--border-2)" stroke-width="${d%90===0?2:1}"/>`;
+  }
+  for(const [txt,deg] of [['N',0],['E',90],['S',180],['O',270]]){
+    const [ux,uy] = u_(deg);
+    svg += `<text x="${(cx+(R+13)*ux).toFixed(1)}" y="${(cy+(R+13)*uy+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text-dim)">${txt}</text>`;
+  }
+
+  // Piste : trait dans l'axe du QFU, numéros aux deux extrémités
+  const [rux,ruy] = u_(qfu);
+  const rl = 78;
+  svg += `<line x1="${(cx-rl*rux).toFixed(1)}" y1="${(cy-rl*ruy).toFixed(1)}" x2="${(cx+rl*rux).toFixed(1)}" y2="${(cy+rl*ruy).toFixed(1)}" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" opacity="0.85"/>`;
+  const num = a => { let n = Math.round(mod360(a)/10); if(n === 0) n = 36; return String(n).padStart(2,'0'); };
+  svg += `<text x="${(cx+(rl+14)*rux).toFixed(1)}" y="${(cy+(rl+14)*ruy+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-2)">${num(qfu)}</text>`;
+  svg += `<text x="${(cx-(rl+14)*rux).toFixed(1)}" y="${(cy-(rl+14)*ruy+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-2)">${num(qfu+180)}</text>`;
+
+  // Flèche de vent : part du bord (direction d'où vient le vent) et pointe vers le centre
+  if(spd > 0){
+    const [wux,wuy] = u_(wdir);
+    const x1 = cx + (R-4)*wux, y1 = cy + (R-4)*wuy;
+    const x2 = cx + 30*wux, y2 = cy + 30*wuy;
+    svg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#67e8f9" stroke-width="3"/>`;
+    svg += `<polygon points="0,-9 6,6 -6,6" fill="#67e8f9" transform="translate(${x2.toFixed(1)},${y2.toFixed(1)}) rotate(${mod360(wdir+180).toFixed(1)})"/>`;
+    const lx = cx + (R-4)*wux, ly = cy + (R-4)*wuy;
+    const off = ly < cy ? -8 : 16;
+    svg += `<text x="${lx.toFixed(1)}" y="${(ly+off).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="#67e8f9">${rkt(spd)} kt</text>`;
+  }
+
+  // Composantes chiffrées au centre
+  const hwTxt = hw >= 0 ? `${rkt((hw))} kt face` : `${rkt((hw))} kt arrière`;
+  svg += `<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="12" font-weight="700" fill="${hw >= 0 ? '#4ade80' : '#f87171'}">${hwTxt}</text>`;
+  svg += `<text x="${cx}" y="${cy+13}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--val)">${rkt((xw))} kt trav. ${xw >= 0 ? 'D' : 'G'}</text>`;
+
+  return `<svg viewBox="0 0 300 300" style="width:100%;max-width:340px;display:block;margin:0 auto">${svg}</svg>`;
+}
+
+// Vue de dessus de la finale : avion crabé face au vent, cap à tenir affiché devant le nez.
+// Repère "piste en haut" — l'axe vertical représente l'axe de piste (QFU).
+function buildFinalSVG(qfu, ang, wca, capFinale, spd, xw){
+  const W = 300, H = 340, cx = 150;
+  const rwTop = 18, rwBot = 132, rwW = 44;
+  const py = 250;                    // position de l'avion
+  let svg = '';
+
+  // ── Piste vue de dessus (seuil en bas, côté approche) ──
+  svg += `<rect x="${cx - rwW/2}" y="${rwTop}" width="${rwW}" height="${rwBot - rwTop}" rx="2" fill="#0a1628" stroke="var(--border-2)" stroke-width="1.5"/>`;
+  // Axe central pointillé, interrompu avant le numéro pour ne pas le barrer
+  svg += `<line x1="${cx}" y1="${rwTop + 8}" x2="${cx}" y2="98" stroke="#e8ecf3" stroke-width="2" stroke-dasharray="9 9" opacity="0.5"/>`;
+  // Numéro de piste, à l'endroit pour le pilote qui arrive du bas
+  const num = (() => { let n = Math.round(mod360(qfu)/10); if(n === 0) n = 36; return String(n).padStart(2,'0'); })();
+  svg += `<text x="${cx}" y="120" text-anchor="middle" font-size="19" font-weight="700" fill="#e8ecf3" letter-spacing="1">${num}</text>`;
+  // Marques de seuil
+  for(const dx of [-15, -9, 9, 15]){
+    svg += `<line x1="${cx + dx}" y1="124" x2="${cx + dx}" y2="130" stroke="#e8ecf3" stroke-width="2.5" opacity="0.75"/>`;
+  }
+  // Axe de piste prolongé
+  svg += `<line x1="${cx}" y1="${rwBot}" x2="${cx}" y2="${H - 16}" stroke="var(--border-2)" stroke-width="1.5" stroke-dasharray="6 7"/>`;
+  svg += `<text x="${cx}" y="${H - 4}" text-anchor="middle" font-size="10" fill="var(--text-dim)">axe de piste ${Math.round(mod360(qfu))}°</text>`;
+
+  // ── Avion crabé face au vent ──
+  const rad = wca * Math.PI / 180;
+  const plane = `<g transform="translate(${cx},${py}) rotate(${wca.toFixed(1)})">
+    <path d="M 0,-26 L 4,-14 L 4,2 L 26,10 L 26,16 L 4,12 L 4,22 L 11,28 L 11,32 L -11,32 L -11,28 L -4,22 L -4,12 L -26,16 L -26,10 L -4,2 L -4,-14 Z"
+      fill="var(--accent)" stroke="#0a1628" stroke-width="1.5" stroke-linejoin="round"/>
+  </g>`;
+
+  // Axe longitudinal prolongé vers l'avant + encart de cap, bien dégagé de la piste
+  const nx = cx + Math.sin(rad) * 50, ny = py - Math.cos(rad) * 50;
+  const tx = cx + Math.sin(rad) * 80, ty = py - Math.cos(rad) * 80;
+  svg += `<line x1="${(cx + Math.sin(rad)*28).toFixed(1)}" y1="${(py - Math.cos(rad)*28).toFixed(1)}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--accent-2)" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+  svg += plane;
+
+  // ── Angle de dérive : arc + valeur en blanc sur pastille sombre ──
+  if(Math.abs(wca) >= 1){
+    const r = 32;
+    const x2 = cx + Math.sin(rad)*r, y2 = py - Math.cos(rad)*r;
+    svg += `<path d="M ${cx} ${(py-r).toFixed(1)} A ${r} ${r} 0 0 ${wca > 0 ? 1 : 0} ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="var(--val)" stroke-width="2.5"/>`;
+    const mrad = rad/2;
+    const lx = cx + Math.sin(mrad)*(r + 10), ly = py - Math.cos(mrad)*(r + 10);
+    svg += `<rect x="${(lx - 20).toFixed(1)}" y="${(ly - 11).toFixed(1)}" width="40" height="20" rx="10" fill="#0a1628" stroke="var(--val)" stroke-width="1.5"/>`;
+    svg += `<text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">${rkt(wca)}°</text>`;
+  }
+
+  // Encart du cap à tenir, devant le nez
+  const bw = 92, bh = 34;
+  svg += `<rect x="${(tx - bw/2).toFixed(1)}" y="${(ty - bh/2).toFixed(1)}" width="${bw}" height="${bh}" rx="7" fill="#0a1628" stroke="var(--accent)" stroke-width="2"/>`;
+  svg += `<text x="${tx.toFixed(1)}" y="${(ty - 4).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--text-dim)" letter-spacing="0.5">CAP À TENIR</text>`;
+  svg += `<text x="${tx.toFixed(1)}" y="${(ty + 11).toFixed(1)}" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">${Math.round(capFinale)}°</text>`;
+
+  // ── Flèche de vent, dans un coin libre du côté d'où il souffle ──
+  if(spd > 0){
+    const wa = mod360(ang + 180);
+    const sx = xw >= 0 ? 258 : 42, sy = 52;
+    const [ux,uy] = u_(wa);
+    svg += `<g transform="translate(${sx},${sy})">
+      <line x1="${(-ux*24).toFixed(1)}" y1="${(-uy*24).toFixed(1)}" x2="${(ux*12).toFixed(1)}" y2="${(uy*12).toFixed(1)}" stroke="#67e8f9" stroke-width="3"/>
+      <polygon points="0,-8 5,5 -5,5" fill="#67e8f9" transform="translate(${(ux*12).toFixed(1)},${(uy*12).toFixed(1)}) rotate(${wa.toFixed(1)})"/>
+      <text x="0" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#67e8f9">${rkt(spd)} kt</text>
+    </g>`;
+  }
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:330px;display:block;margin:0 auto">${svg}</svg>`;
+}
+
+// Composantes du vent d'après les champs de l'onglet (réutilisées par le calcul en direct
+// de la vitesse d'approche et par le calcul complet).
+function windComponents(){
+  const WDIR = vv('W_DIR'), SPD = vv('W_SPD'), GUST = vv('W_GUST'), QFU = vv('W_QFU');
+  let ang = mod360(WDIR - QFU);
+  if(ang > 180) ang -= 360;
+  const rad = ang * Math.PI / 180;
+  const gEff = Math.max(GUST, SPD);
+  return { WDIR, SPD, GUST, QFU, ang,
+    hw: SPD * Math.cos(rad), xw: SPD * Math.sin(rad),
+    hwG: gEff * Math.cos(rad), xwG: gEff * Math.sin(rad) };
+}
+
+const CLUB_FINALE = 70;
+// Majoration = ½ composante de face + effet des rafales. Un vent arrière ne majore jamais
+// la finale (il allonge déjà l'atterrissage) : la composante de face négative est ignorée.
+function vappMajoration(c){
+  return Math.max(0, Math.round(Math.max(0, c.hw) / 2 + Math.max(0, c.hwG - c.hw)));
+}
+
+// Met à jour la vitesse d'approche dès qu'un élément du vent change, sans attendre le bouton
+function updateVappAuto(){
+  const el = document.getElementById('W_VAPP');
+  if(!el || el.dataset.manual) return;
+  const c = windComponents();
+  if(c.SPD <= 0) return;
+  const v = CLUB_FINALE + vappMajoration(c);
+  if(el.value !== String(v)){
+    el.value = v;
+    try{ localStorage.setItem('outils2_field_W_VAPP', el.value); }catch(e){}
+    if(typeof refreshStale === 'function') refreshStale('p4');
+  }
+}
+
+function calcVentTravers(){
+  const WDIR = vv('W_DIR'), SPD = vv('W_SPD'), GUST = vv('W_GUST');
+  const QFU = vv('W_QFU'), XLIM = vv('W_XLIM');
+
+  // Angle signé entre le vent et l'axe de piste : + = vent venant de la droite
+  let ang = mod360(WDIR - QFU);
+  if(ang > 180) ang -= 360;
+  const rad = ang * Math.PI / 180;
+  const hw = SPD * Math.cos(rad);          // > 0 : vent de face · < 0 : vent arrière
+  const xw = SPD * Math.sin(rad);          // > 0 : traversier venant de la droite
+  const gEff = Math.max(GUST, SPD);
+  const hwG = gEff * Math.cos(rad), xwG = gEff * Math.sin(rad);
+
+  document.getElementById('p4_diagram').innerHTML = buildWindSVG(QFU, WDIR, SPD, hw, xw);
+
+  // Vitesse d'approche : 70 kt club majorés du vent (½ composante de face + effet des rafales),
+  // sauf si le pilote a saisi sa propre valeur — sa saisie prime alors.
+  const majVent = vappMajoration({ hw, hwG });
+  const vappAuto = CLUB_FINALE + majVent;
+  const vappEl = document.getElementById('W_VAPP');
+  if(vappEl && !vappEl.dataset.manual && SPD > 0){
+    vappEl.value = vappAuto;
+    try{ localStorage.setItem('outils2_field_W_VAPP', vappEl.value); }catch(e){}
+  }
+
+  // Correction de dérive en finale : l'avion est crabé face au vent
+  const VAPP = vv('W_VAPP');
+  const finalEl = document.getElementById('p4_final');
+  let wcaTxt = '';
+  if(VAPP > 0 && SPD > 0 && Math.abs(xw) < VAPP){
+    const wca = Math.asin(xw / VAPP) * 180 / Math.PI;      // + = vent de droite, on crabe à droite
+    const capF = mod360(QFU + wca);
+    const gs = VAPP * Math.cos(wca * Math.PI / 180) - hw;   // vitesse sol le long de l'axe
+    finalEl.innerHTML = buildFinalSVG(QFU, ang, wca, capF, SPD, xw);
+    wcaTxt = `<div class="section-title">🛬 Finale</div>`;
+    wcaTxt += `<div class="kvline"><span class="k">Finale club (sans vent)</span><span class="v">${CLUB_FINALE} kt</span></div>`;
+    wcaTxt += `<div class="kvline"><span class="k">Majoration vent (½ face + rafales)</span><span class="v">+${majVent} kt</span></div>`;
+    if(majVent === 0){
+      wcaTxt += `<div class="notes" style="margin-top:6px">Pas de majoration : ${hw < -0.5 ? `le vent est <b>arrière</b> (${rkt(hw)} kt) — une majoration allongerait encore l'atterrissage` : 'aucune composante de face significative ni rafale'}.</div>`;
+    }
+    const manuel = vappEl && vappEl.dataset.manual;
+    wcaTxt += `<div class="kvline"><span class="k">Vitesse d'approche retenue${manuel ? ' (saisie manuelle)' : ''}</span><span class="v" style="color:var(--accent-2)">${rkt(VAPP)} kt</span></div>`;
+    if(manuel && rkt(VAPP) !== vappAuto){
+      wcaTxt += `<div class="notes" style="margin-top:6px">ℹ️ Le calcul depuis le vent donnerait <b>${vappAuto} kt</b> — bouton « ↺ Recalculer depuis le vent » pour l'appliquer.</div>`;
+    }
+    const VFE = vv('V_VFE');
+    if(VFE > 0 && VAPP > VFE){
+      wcaTxt += `<div class="banner-warn">⚠️ Vitesse d'approche ${rkt(VAPP)} kt supérieure à VFE (${rkt(VFE)} kt) — vérifiez la configuration des volets.</div>`;
+    }
+    wcaTxt += `<div class="kvline"><span class="k">Correction de dérive (crabe ${wca >= 0 ? 'à droite' : 'à gauche'})</span><span class="v">${rkt(wca)}°</span></div>`;
+    wcaTxt += `<div class="kvline"><span class="k">Cap à tenir dans l'axe</span><span class="v" style="color:var(--accent-2)">${Math.round(capF)}°</span></div>`;
+    wcaTxt += `<div class="kvline"><span class="k">Vitesse sol approchée</span><span class="v">${rkt(gs)} kt</span></div>`;
+    wcaTxt += `<div class="notes" style="margin-top:6px">Cap théorique pour rester dans l'axe, à afficher au compas. À l'arrondi, décrabez et contrez au manche : aile basse côté vent, palonnier opposé pour aligner le nez sur l'axe.</div>`;
+  } else if(VAPP > 0 && SPD > 0){
+    finalEl.innerHTML = '';
+    wcaTxt = `<div class="banner-bad">🛑 Composante traversière (${rkt(xw)} kt) supérieure ou égale à la vitesse d'approche (${rkt(VAPP)} kt) : correction de dérive impossible.</div>`;
+  } else {
+    finalEl.innerHTML = '';
+  }
+
+  let html = '';
+  if(SPD <= 0){
+    html += `<div class="banner-warn">⚠️ Renseignez la direction et la vitesse du vent.</div>`;
+  }
+
+  // Verdict traversier (rafales comprises) par rapport à la limite saisie
+  if(XLIM > 0 && SPD > 0){
+    const xMax = Math.abs(xwG);
+    if(xMax > XLIM){
+      html += `<div class="banner-bad">🛑 Traversier ${Math.round(xMax)} kt (rafales) &gt; limite ${rkt(XLIM)} kt — hors limitation.</div>`;
+    } else if(xMax > 0.8 * XLIM){
+      html += `<div class="banner-warn">⚠️ Traversier ${Math.round(xMax)} kt (rafales) — proche de la limite ${rkt(XLIM)} kt.</div>`;
+    } else {
+      html += `<div class="banner-ok">✅ Traversier ${Math.round(xMax)} kt (rafales) — dans la limite de ${rkt(XLIM)} kt.</div>`;
+    }
+  }
+  if(hw < 0 && SPD > 0){
+    html += `<div class="banner-warn">⚠️ Vent arrière ${rkt((hw))} kt sur cette piste — distances de décollage et d'atterrissage fortement allongées. Piste opposée (${Math.round(mod360(QFU+180))}°) : ${rkt((hw))} kt de face.</div>`;
+  }
+
+  html += `<div class="section-title">Décomposition — piste ${Math.round(mod360(QFU))}°</div>`;
+  html += `<div class="kvline"><span class="k">Angle vent / piste</span><span class="v">${rkt((ang))}° ${ang >= 0 ? 'à droite' : 'à gauche'}</span></div>`;
+  html += `<div class="kvline"><span class="k">${hw >= 0 ? 'Composante de face' : 'Composante arrière'}</span><span class="v" style="color:${hw >= 0 ? '#4ade80' : '#f87171'}">${rkt((hw))} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Composante traversière (${xw >= 0 ? 'droite' : 'gauche'})</span><span class="v">${rkt((xw))} kt</span></div>`;
+  if(GUST > SPD){
+    html += `<div class="section-title">Avec rafales ${rkt(GUST)} kt</div>`;
+    html += `<div class="kvline"><span class="k">${hwG >= 0 ? 'Composante de face' : 'Composante arrière'} (rafales)</span><span class="v" style="color:${hwG >= 0 ? '#4ade80' : '#f87171'}">${rkt((hwG))} kt</span></div>`;
+    html += `<div class="kvline"><span class="k">Composante traversière (rafales)</span><span class="v">${rkt((xwG))} kt</span></div>`;
+  }
+
+  html += wcaTxt;
+
+  // Piste opposée : aide au choix de la piste en service
+  const hwOpp = -hw, xwOpp = -xw;
+  html += `<div class="section-title">Piste opposée ${Math.round(mod360(QFU+180))}°</div>`;
+  html += `<div class="kvline"><span class="k">${hwOpp >= 0 ? 'Composante de face' : 'Composante arrière'}</span><span class="v" style="color:${hwOpp >= 0 ? '#4ade80' : '#f87171'}">${rkt((hwOpp))} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Composante traversière (${xwOpp >= 0 ? 'droite' : 'gauche'})</span><span class="v">${rkt((xwOpp))} kt</span></div>`;
+
+  // Report du vent de face vers l'onglet Vitesses (majoration de la finale)
+  if(SPD > 0 && hw > 0){
+    const vm = document.getElementById('V_VENTMOY'), vr = document.getElementById('V_RAFALE');
+    if(vm){ vm.value = rkt(hw); localStorage.setItem('outils2_field_V_VENTMOY', vm.value); }
+    if(vr){ vr.value = rkt(Math.max(0, hwG)); localStorage.setItem('outils2_field_V_RAFALE', vr.value); }
+    if(typeof refreshStale === 'function') refreshStale('p2');
+    html += `<div class="notes" style="margin-top:8px">➡️ Composante de face <b>${rkt(hw)} kt</b>${hwG > hw ? ` (rafales ${rkt(hwG)} kt)` : ''} reportée dans l'onglet Vitesses pour la majoration de finale — pensez à y relancer le calcul.</div>`;
+  }
+
+  document.getElementById('p4_out').innerHTML = html;
+}
+
+// QFU : l'onglet Tour de piste alimente l'onglet Vent de travers, sauf si le pilote
+// a saisi un QFU différent ici (par ex. pour comparer une autre piste) — sa valeur prime alors.
+function syncQfuToWind(){
+  const t = document.getElementById('T_QFU'), w = document.getElementById('W_QFU');
+  if(t && w && !w.dataset.manual && t.value !== ''){
+    w.value = t.value;
+    localStorage.setItem('outils2_field_W_QFU', w.value);
+    if(typeof refreshStale === 'function') refreshStale('p4');
+  }
+}
+document.getElementById('T_QFU')?.addEventListener('input', syncQfuToWind);
+document.getElementById('W_QFU')?.addEventListener('input', function(){ this.dataset.manual = '1'; });
+if(localStorage.getItem('outils2_field_W_QFU') !== null) document.getElementById('W_QFU')?.setAttribute('data-manual','1');
+
+// Vitesse d'approche : la saisie manuelle prime (mémorisée d'une session à l'autre),
+// le bouton rétablit le calcul automatique depuis le vent.
+document.getElementById('W_VAPP')?.addEventListener('input', function(){
+  this.dataset.manual = '1';
+  try{ localStorage.setItem('outils2_vapp_manual', '1'); }catch(e){}
+});
+if(localStorage.getItem('outils2_vapp_manual') === '1'){
+  document.getElementById('W_VAPP')?.setAttribute('data-manual','1');
+}
+function resetVappAuto(){
+  const el = document.getElementById('W_VAPP');
+  if(el) delete el.dataset.manual;
+  try{ localStorage.removeItem('outils2_vapp_manual'); }catch(e){}
+  calcVentTravers();
+}
+
+// La vitesse d'approche suit le vent en direct : dès qu'un élément du vent ou le QFU change,
+// elle se recalcule sans attendre le bouton (sauf saisie manuelle).
+['W_DIR','W_SPD','W_GUST','W_QFU'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', updateVappAuto);
+});
+
 // ── Navigation onglets (prêt pour l'ajout de nouveaux onglets) ──
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -1430,6 +1764,8 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 initShared();
 calcVxVy();
+syncQfuToWind();
+updateVappAuto();
 Object.keys(CALC_TABS).forEach(restoreCalc);
 refreshAllStale();
 
