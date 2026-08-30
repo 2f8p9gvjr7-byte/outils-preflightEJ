@@ -80,7 +80,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160</div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v16</span></div>
 </header>
 
 <div class="tabs">
@@ -1795,9 +1795,36 @@ updateVappAuto();
 Object.keys(CALC_TABS).forEach(restoreCalc);
 refreshAllStale();
 
+// ── Mise à jour de l'application ──
+// updateViaCache 'none' empêche le navigateur de servir un ancien service-worker.js
+// depuis son cache HTTP (cause classique d'une app figée sur iOS).
 if('serviceWorker' in navigator){
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(reloading) return;      // garde-fou : un seul rechargement
+    reloading = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+      .then((reg) => {
+        reg.update();
+        // Une version en attente ? On l'active tout de suite.
+        if(reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if(!nw) return;
+          nw.addEventListener('statechange', () => {
+            if(nw.state === 'installed' && navigator.serviceWorker.controller) nw.postMessage('SKIP_WAITING');
+          });
+        });
+        // Nouvelle vérification à chaque retour dans l'app (réveil depuis l'écran d'accueil iOS)
+        document.addEventListener('visibilitychange', () => {
+          if(document.visibilityState === 'visible') reg.update();
+        });
+      })
+      .catch(() => {});
   });
 }
 </script>
