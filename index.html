@@ -80,7 +80,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v16</span></div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v19</span></div>
 </header>
 
 <div class="tabs">
@@ -261,7 +261,6 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <button class="btn" onclick="calcVentTravers()">Calculer le vent de travers</button>
   <div id="p4_stale"></div>
   <div id="p4_final" class="result" style="padding:8px 6px"></div>
-  <div id="p4_diagram" class="result" style="padding:8px 6px"></div>
   <div id="p4_out" class="result"></div>
 
   <div class="notes">
@@ -1386,7 +1385,7 @@ const CALC_TABS = {
         outs:['p5_out'], stale:'p5_stale' },
   p4: { fn:'calcVentTravers', label:'Calculer le vent de travers',
         inputs:['W_DIR','W_SPD','W_GUST','W_QFU','W_XLIM','W_VAPP'], radios:[],
-        outs:['p4_final','p4_diagram','p4_out'], stale:'p4_stale' }
+        outs:['p4_final','p4_out'], stale:'p4_stale' }
 };
 
 function calcSignature(key){
@@ -1463,69 +1462,40 @@ Object.entries(CALC_TABS).forEach(([key, cfg]) => {
 // ce qui ferait afficher 7 kt au lieu de 8 pour 15 kt à 30°).
 function rkt(x){ return Math.round(+(Math.abs(x).toFixed(6))); }
 
-function buildWindSVG(qfu, wdir, spd, hw, xw){
-  const cx = 150, cy = 150, R = 112;
-  let svg = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--border-2)" stroke-width="1.5"/>`;
-  for(let d = 0; d < 360; d += 30){
-    const [ux,uy] = u_(d);
-    const inner = d % 90 === 0 ? R - 11 : R - 6;
-    svg += `<line x1="${(cx+inner*ux).toFixed(1)}" y1="${(cy+inner*uy).toFixed(1)}" x2="${(cx+R*ux).toFixed(1)}" y2="${(cy+R*uy).toFixed(1)}" stroke="var(--border-2)" stroke-width="${d%90===0?2:1}"/>`;
-  }
-  for(const [txt,deg] of [['N',0],['E',90],['S',180],['O',270]]){
-    const [ux,uy] = u_(deg);
-    svg += `<text x="${(cx+(R+13)*ux).toFixed(1)}" y="${(cy+(R+13)*uy+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text-dim)">${txt}</text>`;
-  }
-
-  // Piste : trait dans l'axe du QFU, numéros aux deux extrémités
-  const [rux,ruy] = u_(qfu);
-  const rl = 78;
-  svg += `<line x1="${(cx-rl*rux).toFixed(1)}" y1="${(cy-rl*ruy).toFixed(1)}" x2="${(cx+rl*rux).toFixed(1)}" y2="${(cy+rl*ruy).toFixed(1)}" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" opacity="0.85"/>`;
-  const num = a => { let n = Math.round(mod360(a)/10); if(n === 0) n = 36; return String(n).padStart(2,'0'); };
-  svg += `<text x="${(cx+(rl+14)*rux).toFixed(1)}" y="${(cy+(rl+14)*ruy+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-2)">${num(qfu)}</text>`;
-  svg += `<text x="${(cx-(rl+14)*rux).toFixed(1)}" y="${(cy-(rl+14)*ruy+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent-2)">${num(qfu+180)}</text>`;
-
-  // Flèche de vent : part du bord (direction d'où vient le vent) et pointe vers le centre
-  if(spd > 0){
-    const [wux,wuy] = u_(wdir);
-    const x1 = cx + (R-4)*wux, y1 = cy + (R-4)*wuy;
-    const x2 = cx + 30*wux, y2 = cy + 30*wuy;
-    svg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#67e8f9" stroke-width="3"/>`;
-    svg += `<polygon points="0,-9 6,6 -6,6" fill="#67e8f9" transform="translate(${x2.toFixed(1)},${y2.toFixed(1)}) rotate(${mod360(wdir+180).toFixed(1)})"/>`;
-    const lx = cx + (R-4)*wux, ly = cy + (R-4)*wuy;
-    const off = ly < cy ? -8 : 16;
-    svg += `<text x="${lx.toFixed(1)}" y="${(ly+off).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="#67e8f9">${rkt(spd)} kt</text>`;
-  }
-
-  // Composantes chiffrées au centre
-  const hwTxt = hw >= 0 ? `${rkt((hw))} kt face` : `${rkt((hw))} kt arrière`;
-  svg += `<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="12" font-weight="700" fill="${hw >= 0 ? '#4ade80' : '#f87171'}">${hwTxt}</text>`;
-  svg += `<text x="${cx}" y="${cy+13}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--val)">${rkt((xw))} kt trav. ${xw >= 0 ? 'D' : 'G'}</text>`;
-
-  return `<svg viewBox="0 0 300 300" style="width:100%;max-width:340px;display:block;margin:0 auto">${svg}</svg>`;
-}
-
 // Vue de dessus de la finale : avion crabé face au vent, cap à tenir affiché devant le nez.
 // Repère "piste en haut" — l'axe vertical représente l'axe de piste (QFU).
-function buildFinalSVG(qfu, ang, wca, capFinale, spd, xw){
-  const W = 300, H = 340, cx = 150;
-  const rwTop = 18, rwBot = 132, rwW = 44;
-  const py = 250;                    // position de l'avion
+function buildFinalSVG(qfu, ang, wca, capFinale, spd, xw, wdir){
+  const S = 380, cx = 190, cy = 190;
+  const RI = 148, RO = 166, RL = 177;    // graduations : intérieur, extérieur, étiquettes (hors couronne)
+  const rwTop = 58, rwBot = 168, rwW = 44;
+  const py = 278;                         // position de l'avion
+  // Couronne orientée piste en haut : un cap H se lit à l'angle écran (H − QFU)
+  const pos = (H, r) => { const [ux,uy] = u_(mod360(H - qfu)); return [cx + r*ux, cy + r*uy]; };
   let svg = '';
+
+  // ── Couronne des caps : graduations, chiffres à l'extérieur ──
+  svg += `<circle cx="${cx}" cy="${cy}" r="${RI}" fill="none" stroke="var(--border-2)" stroke-width="1"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="${RO}" fill="none" stroke="var(--border-2)" stroke-width="2"/>`;
+  for(let h = 0; h < 360; h += 5){
+    const len = h % 30 === 0 ? 18 : (h % 10 === 0 ? 11 : 6);
+    const [x1,y1] = pos(h, RI), [x2,y2] = pos(h, RI + len);
+    svg += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${h % 30 === 0 ? 'var(--text-dim)' : 'var(--border-2)'}" stroke-width="${h % 30 === 0 ? 2 : 1}"/>`;
+  }
+  for(let h = 0; h < 360; h += 30){
+    const [lx,ly] = pos(h, RL);
+    const lbl = h === 0 ? '36' : String(h/10).padStart(2,'0');
+    svg += `<text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text-dim)">${lbl}</text>`;
+  }
 
   // ── Piste vue de dessus (seuil en bas, côté approche) ──
   svg += `<rect x="${cx - rwW/2}" y="${rwTop}" width="${rwW}" height="${rwBot - rwTop}" rx="2" fill="#0a1628" stroke="var(--border-2)" stroke-width="1.5"/>`;
-  // Axe central pointillé, interrompu avant le numéro pour ne pas le barrer
-  svg += `<line x1="${cx}" y1="${rwTop + 8}" x2="${cx}" y2="98" stroke="#e8ecf3" stroke-width="2" stroke-dasharray="9 9" opacity="0.5"/>`;
-  // Numéro de piste, à l'endroit pour le pilote qui arrive du bas
+  svg += `<line x1="${cx}" y1="${rwTop + 8}" x2="${cx}" y2="134" stroke="#e8ecf3" stroke-width="2" stroke-dasharray="9 9" opacity="0.5"/>`;
   const num = (() => { let n = Math.round(mod360(qfu)/10); if(n === 0) n = 36; return String(n).padStart(2,'0'); })();
-  svg += `<text x="${cx}" y="120" text-anchor="middle" font-size="19" font-weight="700" fill="#e8ecf3" letter-spacing="1">${num}</text>`;
-  // Marques de seuil
+  svg += `<text x="${cx}" y="156" text-anchor="middle" font-size="19" font-weight="700" fill="#e8ecf3" letter-spacing="1">${num}</text>`;
   for(const dx of [-15, -9, 9, 15]){
-    svg += `<line x1="${cx + dx}" y1="124" x2="${cx + dx}" y2="130" stroke="#e8ecf3" stroke-width="2.5" opacity="0.75"/>`;
+    svg += `<line x1="${cx + dx}" y1="160" x2="${cx + dx}" y2="166" stroke="#e8ecf3" stroke-width="2.5" opacity="0.75"/>`;
   }
-  // Axe de piste prolongé
-  svg += `<line x1="${cx}" y1="${rwBot}" x2="${cx}" y2="${H - 16}" stroke="var(--border-2)" stroke-width="1.5" stroke-dasharray="6 7"/>`;
-  svg += `<text x="${cx}" y="${H - 4}" text-anchor="middle" font-size="10" fill="var(--text-dim)">axe de piste ${Math.round(mod360(qfu))}°</text>`;
+  svg += `<line x1="${cx}" y1="${rwBot}" x2="${cx}" y2="336" stroke="var(--border-2)" stroke-width="1.5" stroke-dasharray="6 7"/>`;
 
   // ── Avion crabé face au vent ──
   const rad = wca * Math.PI / 180;
@@ -1533,14 +1503,12 @@ function buildFinalSVG(qfu, ang, wca, capFinale, spd, xw){
     <path d="M 0,-26 L 4,-14 L 4,2 L 26,10 L 26,16 L 4,12 L 4,22 L 11,28 L 11,32 L -11,32 L -11,28 L -4,22 L -4,12 L -26,16 L -26,10 L -4,2 L -4,-14 Z"
       fill="var(--accent)" stroke="#0a1628" stroke-width="1.5" stroke-linejoin="round"/>
   </g>`;
-
-  // Axe longitudinal prolongé vers l'avant + encart de cap, bien dégagé de la piste
-  const nx = cx + Math.sin(rad) * 50, ny = py - Math.cos(rad) * 50;
-  const tx = cx + Math.sin(rad) * 80, ty = py - Math.cos(rad) * 80;
+  const nx = cx + Math.sin(rad)*50, ny = py - Math.cos(rad)*50;
+  const tx = cx + Math.sin(rad)*80, ty = py - Math.cos(rad)*80;
   svg += `<line x1="${(cx + Math.sin(rad)*28).toFixed(1)}" y1="${(py - Math.cos(rad)*28).toFixed(1)}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--accent-2)" stroke-width="1.5" stroke-dasharray="4 4"/>`;
   svg += plane;
 
-  // ── Angle de dérive : arc + valeur en blanc sur pastille sombre ──
+  // Angle de dérive : arc + valeur en blanc sur pastille sombre
   if(Math.abs(wca) >= 1){
     const r = 32;
     const x2 = cx + Math.sin(rad)*r, y2 = py - Math.cos(rad)*r;
@@ -1557,19 +1525,29 @@ function buildFinalSVG(qfu, ang, wca, capFinale, spd, xw){
   svg += `<text x="${tx.toFixed(1)}" y="${(ty - 4).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--text-dim)" letter-spacing="0.5">CAP À TENIR</text>`;
   svg += `<text x="${tx.toFixed(1)}" y="${(ty + 11).toFixed(1)}" text-anchor="middle" font-size="15" font-weight="700" fill="#ffffff">${Math.round(capFinale)}°</text>`;
 
-  // ── Flèche de vent, dans un coin libre du côté d'où il souffle ──
-  if(spd > 0){
-    const wa = mod360(ang + 180);
-    const sx = xw >= 0 ? 258 : 42, sy = 52;
-    const [ux,uy] = u_(wa);
-    svg += `<g transform="translate(${sx},${sy})">
-      <line x1="${(-ux*24).toFixed(1)}" y1="${(-uy*24).toFixed(1)}" x2="${(ux*12).toFixed(1)}" y2="${(uy*12).toFixed(1)}" stroke="#67e8f9" stroke-width="3"/>
-      <polygon points="0,-8 5,5 -5,5" fill="#67e8f9" transform="translate(${(ux*12).toFixed(1)},${(uy*12).toFixed(1)}) rotate(${wa.toFixed(1)})"/>
-      <text x="0" y="44" text-anchor="middle" font-size="11" font-weight="700" fill="#67e8f9">${rkt(spd)} kt</text>
-    </g>`;
+  // ── Repères sur la couronne (pointes vers l'extérieur, dans la zone des graduations) ──
+  // Cap à tenir
+  const [cbx,cby] = pos(capFinale, RI + 9);
+  svg += `<polygon points="0,-9 6,7 -6,7" fill="var(--accent-2)" transform="translate(${cbx.toFixed(1)},${cby.toFixed(1)}) rotate(${mod360(capFinale - qfu).toFixed(1)})"/>`;
+
+  // Vent : repère au cap d'où il vient + flèche vers le centre + vitesse
+  if(spd > 0 && wdir !== undefined){
+    const [wbx,wby] = pos(wdir, RI + 9);
+    svg += `<polygon points="0,-9 7,8 -7,8" fill="#67e8f9" transform="translate(${wbx.toFixed(1)},${wby.toFixed(1)}) rotate(${mod360(wdir - qfu).toFixed(1)})"/>`;
+    const [ax1,ay1] = pos(wdir, RI - 6), [ax2,ay2] = pos(wdir, RI - 42);
+    svg += `<line x1="${ax1.toFixed(1)}" y1="${ay1.toFixed(1)}" x2="${ax2.toFixed(1)}" y2="${ay2.toFixed(1)}" stroke="#67e8f9" stroke-width="3"/>`;
+    svg += `<polygon points="0,-9 5,5 -5,5" fill="#67e8f9" transform="translate(${ax2.toFixed(1)},${ay2.toFixed(1)}) rotate(${mod360(wdir - qfu + 180).toFixed(1)})"/>`;
+    const [tlx,tly] = pos(wdir, RI - 64);
+    svg += `<rect x="${(tlx - 27).toFixed(1)}" y="${(tly - 11).toFixed(1)}" width="54" height="21" rx="10" fill="#0a1628" stroke="#67e8f9" stroke-width="1.5"/>`;
+    svg += `<text x="${tlx.toFixed(1)}" y="${(tly + 4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="#67e8f9">${rkt(spd)} kt</text>`;
   }
 
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:330px;display:block;margin:0 auto">${svg}</svg>`;
+  // QFU rappelé en haut, hors de la couronne : sert aussi d'index de lecture
+  svg += `<rect x="${cx - 40}" y="4" width="80" height="24" rx="6" fill="#0a1628" stroke="var(--accent)" stroke-width="2"/>`;
+  svg += `<text x="${cx}" y="21" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-2)">QFU ${Math.round(mod360(qfu))}°</text>`;
+  svg += `<line x1="${cx}" y1="28" x2="${cx}" y2="${cy - RO}" stroke="var(--accent)" stroke-width="1.5"/>`;
+
+  return `<svg viewBox="0 0 ${S} ${S}" style="width:100%;max-width:340px;display:block;margin:0 auto">${svg}</svg>`;
 }
 
 // Composantes du vent d'après les champs de l'onglet (réutilisées par le calcul en direct
@@ -1643,7 +1621,6 @@ function calcVentTravers(){
   const gEff = Math.max(GUST, SPD);
   const hwG = gEff * Math.cos(rad), xwG = gEff * Math.sin(rad);
 
-  document.getElementById('p4_diagram').innerHTML = buildWindSVG(QFU, WDIR, SPD, hw, xw);
 
   // Vitesse d'approche : 70 kt club majorés du vent (½ composante de face + effet des rafales),
   // sauf si le pilote a saisi sa propre valeur — sa saisie prime alors.
@@ -1663,7 +1640,7 @@ function calcVentTravers(){
     const wca = Math.asin(xw / VAPP) * 180 / Math.PI;      // + = vent de droite, on crabe à droite
     const capF = mod360(QFU + wca);
     const gs = VAPP * Math.cos(wca * Math.PI / 180) - hw;   // vitesse sol le long de l'axe
-    finalEl.innerHTML = buildFinalSVG(QFU, ang, wca, capF, SPD, xw);
+    finalEl.innerHTML = buildFinalSVG(QFU, ang, wca, capF, SPD, xw, WDIR);
     wcaTxt = `<div class="section-title">🛬 Finale</div>`;
     wcaTxt += `<div class="kvline"><span class="k">Finale club (sans vent)</span><span class="v">${CLUB_FINALE} kt</span></div>`;
     wcaTxt += `<div class="kvline"><span class="k">Majoration vent (½ face + rafales)</span><span class="v">+${majVent} kt</span></div>`;
