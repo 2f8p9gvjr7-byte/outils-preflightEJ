@@ -254,8 +254,8 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <fieldset>
     <legend>🛬 Finale</legend>
     <div class="row"><label>Vitesse d'approche (indiquée)</label><input id="W_VAPP" type="number" step="1" value="70"><span class="unit">kt</span></div>
-    <div class="row" style="border:none"><button type="button" class="btn-mini" onclick="resetVappAuto()">↺ Recalculer depuis le vent</button></div>
-    <div class="notes" style="margin-top:0">Calculée automatiquement à partir du vent : <b>70 kt club + ½ composante de face + effet des rafales</b>. Vous pouvez la modifier à la main — le bouton ci-dessus rétablit le calcul automatique. Sert à la correction de dérive et au cap de finale.</div>
+    <div id="W_VAPP_STATUS"></div>
+    <div class="notes" style="margin-top:8px">Calculée à partir du vent : <b>70 kt club + ½ composante de face + effet des rafales</b>. Un vent traversier ou arrière ne majore pas la finale. Modifiable à la main si besoin.</div>
   </fieldset>
 
   <button class="btn" onclick="calcVentTravers()">Calculer le vent de travers</button>
@@ -1595,14 +1595,38 @@ function vappMajoration(c){
 // Met à jour la vitesse d'approche dès qu'un élément du vent change, sans attendre le bouton
 function updateVappAuto(){
   const el = document.getElementById('W_VAPP');
-  if(!el || el.dataset.manual) return;
+  if(!el){ return; }
+  if(el.dataset.manual){ updateVappStatus(); return; }
   const c = windComponents();
-  if(c.SPD <= 0) return;
+  if(c.SPD <= 0){ updateVappStatus(); return; }
   const v = CLUB_FINALE + vappMajoration(c);
   if(el.value !== String(v)){
     el.value = v;
     try{ localStorage.setItem('outils2_field_W_VAPP', el.value); }catch(e){}
     if(typeof refreshStale === 'function') refreshStale('p4');
+  }
+  updateVappStatus();
+}
+
+// Indique en clair, sous le champ, si la vitesse suit le vent ou vient d'une saisie manuelle —
+// sinon une ancienne saisie peut figer la valeur sans que le pilote comprenne pourquoi.
+function updateVappStatus(){
+  const box = document.getElementById('W_VAPP_STATUS');
+  const el = document.getElementById('W_VAPP');
+  if(!box || !el) return;
+  const c = windComponents();
+  const maj = vappMajoration(c);
+  const auto = CLUB_FINALE + maj;
+  if(el.dataset.manual){
+    const diff = rkt(vv('W_VAPP')) !== auto;
+    box.innerHTML = `<div class="banner-warn" style="margin:6px 0 2px;text-align:left">✏️ <b>Saisie manuelle</b> — cette valeur ne suit plus le vent.${c.SPD > 0 && diff ? ` Le calcul depuis le vent donnerait <b>${auto} kt</b>.` : ''}</div>`
+      + `<button type="button" class="btn-mini" style="width:100%;margin:0 0 4px" onclick="resetVappAuto()">↺ Revenir au calcul automatique</button>`;
+  } else if(c.SPD > 0){
+    // On affiche la composante de face : c'est elle qui majore, pas la vitesse du vent brute
+    const face = c.hw > 0.5 ? `${rkt(c.hw)} kt de face` : (c.hw < -0.5 ? `${rkt(c.hw)} kt arrière` : 'traversier pur');
+    box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🔄 <b>Suit le vent</b> — vent ${rkt(c.SPD)} kt dont <b>${face}</b> · ${CLUB_FINALE} kt club ${maj > 0 ? `+ <b>${maj} kt</b> de majoration` : '+ 0 (rien à majorer sans composante de face)'}</div>`;
+  } else {
+    box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🔄 <b>Suit le vent</b> — saisissez le vent pour obtenir la majoration</div>`;
   }
 }
 
@@ -1735,6 +1759,7 @@ if(localStorage.getItem('outils2_field_W_QFU') !== null) document.getElementById
 document.getElementById('W_VAPP')?.addEventListener('input', function(){
   this.dataset.manual = '1';
   try{ localStorage.setItem('outils2_vapp_manual', '1'); }catch(e){}
+  updateVappStatus();
 });
 if(localStorage.getItem('outils2_vapp_manual') === '1'){
   document.getElementById('W_VAPP')?.setAttribute('data-manual','1');
@@ -1743,6 +1768,7 @@ function resetVappAuto(){
   const el = document.getElementById('W_VAPP');
   if(el) delete el.dataset.manual;
   try{ localStorage.removeItem('outils2_vapp_manual'); }catch(e){}
+  updateVappAuto();
   calcVentTravers();
 }
 
