@@ -69,6 +69,20 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 .shared-box .lbl{font-size:10px;color:var(--accent-2);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px}
 .btn-mini{flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-2);background:#0a1628;color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s}
 .btn-mini:active{background:var(--bg-3);color:var(--accent);border-color:var(--accent)}
+.ovr-reset{flex:0 0 auto;margin-left:6px;padding:5px 9px;border-radius:6px;border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);font-size:13px;font-weight:700;cursor:pointer}
+.phase-head{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg-3);border-left:4px solid var(--accent);border-radius:8px;padding:9px 12px;margin:14px 0 8px;font-size:13.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#e8ecf3}
+.phase-head .badge{font-size:10px;font-weight:700;letter-spacing:0.5px;padding:3px 8px;border-radius:20px;background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad);text-transform:none}
+.keygrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.keygrid .kc{background:var(--bg-3);border:1px solid var(--border-2);border-radius:10px;padding:9px 11px;min-width:0}
+.keygrid .kc.alert{border-color:var(--bad);background:var(--bad-bg)}
+.keygrid .kc.wide{grid-column:1 / -1}
+.keygrid .kc.stale{opacity:0.4}
+.keygrid .kc .old{display:inline-block;font-size:8.5px;font-weight:700;color:var(--bad);border:1px solid var(--bad);border-radius:20px;padding:0 5px;margin-left:5px;letter-spacing:0}
+.keygrid .kc .k{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;line-height:1.25;margin-bottom:3px}
+.keygrid .kc .v{font-size:23px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.keygrid .kc .u{font-size:12px;font-weight:600;color:var(--text-dim);margin-left:2px}
+.detail-toggle{width:100%;margin:14px 0 2px;padding:11px;border-radius:8px;border:1px solid var(--border-2);background:#0a1628;color:var(--text-dim);font-size:13px;font-weight:700;letter-spacing:0.5px;cursor:pointer}
+.detail-toggle:active{background:var(--bg-3);color:var(--accent)}
 .dash{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
 .dash .cell{background:#0a1628;border:1px solid var(--border-2);border-radius:8px;padding:7px 9px;min-width:0}
 .dash .cell.wide{grid-column:1 / -1}
@@ -86,7 +100,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v23</span></div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v29</span></div>
 </header>
 
 <div class="tabs">
@@ -104,7 +118,10 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <div id="p0" class="page active">
   <div id="p0_fresh"></div>
   <button class="btn" onclick="recalcAll()">↻ Tout recalculer</button>
-  <div id="p0_out"></div>
+  <div id="p0_alerts"></div>
+  <div id="p0_key"></div>
+  <button class="detail-toggle" id="p0_toggle" onclick="toggleDetail()">▾ Détails par phase</button>
+  <div id="p0_out" style="display:none"></div>
   <div class="notes">
     Récapitulatif des <b>derniers calculs validés</b> de chaque onglet — rien n'est recalculé ici, donc aucune valeur ne peut diverger. Une section grisée signale un calcul périmé : le bouton ci-dessus les relance tous.<br>
     <b>Usage non certifié</b> — vérifiez toujours avec le manuel de vol.
@@ -150,6 +167,36 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
       </div>
     </div>
     <div class="shared-box">
+      <div class="lbl">Piste en service</div>
+      <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+        <input id="shared_qfu" type="number" step="1" value="0" style="width:110px">
+        <span class="unit">°</span>
+      </div>
+    </div>
+    <div class="shared-box">
+      <div class="lbl">Vent</div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">Direction</div>
+          <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+            <input id="shared_wdir" type="number" step="10" value="0" style="width:100%"><span class="unit">°</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">Vitesse</div>
+          <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+            <input id="shared_wspd" type="number" step="1" value="0" style="width:100%"><span class="unit">kt</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px">Rafales</div>
+          <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+            <input id="shared_wgust" type="number" step="1" value="0" style="width:100%"><span class="unit">kt</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="shared-box">
       <div class="lbl">Altitude obstacle (onglet Altitudes)</div>
       <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
         <input id="shared_obstacle" type="number" step="10" value="0" style="width:110px">
@@ -182,8 +229,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   </fieldset>
 
   <div class="notes">
-    Saisissez QNH, OAT, masse et altitude obstacle ci-dessus — ces valeurs alimentent automatiquement les calculs des onglets suivants.
-  </div>
+    <b>Toutes les conditions du jour se saisissent ici</b> et alimentent automatiquement les autres onglets. Vous pouvez modifier une valeur directement dans un onglet : elle devient alors <b>locale</b> (bordure orange), n'est plus écrasée, et le bouton ↺ à côté du champ la ramène à la valeur du vol.
   </div>
 
 </div>
@@ -228,11 +274,8 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <fieldset>
     <legend>🏫 Vitesses club (référence fixe)</legend>
     <div class="notes" style="margin-top:0">Vitesses imposées par l'aéro-club pour cet avion, indépendantes du calcul VS ci-dessus. Décollage 55 kt · Montée 70 kt · Vent arrière 80 kt · Finale 70 kt, majorée si vent.</div>
-    <div class="row"><label>Direction du vent (d'où il vient)</label><input id="V_WDIR" type="number" step="10" value="0"><span class="unit">°</span></div>
-    <div class="row"><label>Vitesse du vent</label><input id="V_WSPD" type="number" step="1" value="0"><span class="unit">kt</span></div>
-    <div class="row"><label>Rafales (max, 0 si aucune)</label><input id="V_WGUST" type="number" step="1" value="0"><span class="unit">kt</span></div>
     <div id="V_WIND_INFO"></div>
-    <div class="notes" style="margin-top:6px">La composante de face est calculée automatiquement à partir du <b>QFU de l'onglet Tour de piste</b>. Majoration = ½ composante de face + effet des rafales, appliquée à la finale seulement. Ce vent est repris automatiquement dans l'onglet Vent de travers, où il reste modifiable.</div>
+    <div class="notes" style="margin-top:6px">Le vent est celui de l'onglet <b>Partagé</b>. Sa composante de face, calculée sur le QFU du Tour de piste, majore la finale de ½ composante + effet des rafales. Un vent traversier ou arrière ne majore rien.</div>
   </fieldset>
 
   <button class="btn" onclick="calcVitesses()">Calculer les vitesses</button>
@@ -327,6 +370,24 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div id="p6_stale"></div>
   <div id="p6_bar"></div>
   <div id="p6_out" class="result"></div>
+
+  <fieldset style="margin-top:16px">
+    <legend>⛰️ Franchissement d'un col / obstacle</legend>
+    <div class="row"><label>Altitude de départ (terrain ou point de départ de la montée)</label><input id="C_ZDEP" type="number" step="10" value="0"><span class="unit">ft</span></div>
+    <div class="row"><label>Altitude réelle du col (carte)</label><input id="C_ZCOL" type="number" step="10" value="0"><span class="unit">ft</span></div>
+    <div class="row"><label>Marge minimale souhaitée</label><input id="C_MARGE" type="number" step="100" value="500"><span class="unit">ft</span></div>
+    <div class="row"><label>Distance jusqu'au col</label><input id="C_DIST" type="number" step="0.5" value="0"><span class="unit">NM</span></div>
+    <div class="row"><label>Cap vers le col</label><input id="C_CAP" type="number" step="1" value="0"><span class="unit">°</span></div>
+    <div class="row"><label>Vitesse indiquée de montée</label><input id="C_VIAS" type="number" step="1" value="86"><span class="unit">kt</span></div>
+    <div class="notes" style="margin-top:0">Température en altitude (prévision Windy ou TEMSI) — elle donne le gradient thermique réel, sans lequel le calcul retomberait sur l'atmosphère standard.</div>
+    <div class="row"><label>Température en altitude</label><input id="C_TALT" type="number" step="1" value="0"><span class="unit">°C</span></div>
+    <div class="row"><label>Altitude de cette température</label><input id="C_ZREF" type="number" step="100" value="0"><span class="unit">ft</span></div>
+    <div class="notes" style="margin-top:0">QNH, température terrain, masse et vent proviennent de l'onglet <b>Partagé</b>. L'altitude de départ suit l'altitude terrain, modifiable si la montée commence ailleurs.</div>
+  </fieldset>
+
+  <button class="btn" onclick="calcFranchissement()">Calculer le franchissement</button>
+  <div id="C_stale"></div>
+  <div id="C_out" class="result"></div>
 </div>
 
 <!-- ONGLET 5 : ROC / Plafond selon POH DR400/160 (édition n°1, 10-5-1972) -->
@@ -446,9 +507,12 @@ function initShared(){
   const obstacleLocale = localStorage.getItem('outils2_obstacle_locale');
   if(obstacleEl && obstacleLocale !== null) obstacleEl.value = obstacleLocale;
 
-  const altTerrainEl = document.getElementById('shared_alt');
-  const altTerrainLocale = localStorage.getItem('outils2_terrain_locale');
-  if(altTerrainEl && altTerrainLocale !== null) altTerrainEl.value = altTerrainLocale;
+  [['shared_alt','outils2_terrain_locale'], ['shared_qfu','outils2_qfu_locale'],
+   ['shared_wdir','outils2_wdir_locale'], ['shared_wspd','outils2_wspd_locale'],
+   ['shared_wgust','outils2_wgust_locale']].forEach(([id, key]) => {
+    const el = document.getElementById(id), v = localStorage.getItem(key);
+    if(el && v !== null) el.value = v;
+  });
 
   const aoatEl = document.getElementById('A_OAT');
   const aoatLocale = localStorage.getItem('outils2_aoat_locale');
@@ -468,114 +532,136 @@ function initShared(){
   const roatLocale = localStorage.getItem('outils2_roat_locale');
   if(roatEl && roatLocale !== null) roatEl.value = roatLocale;
 
-  syncMasseToTabs();
-  syncQnhOatToTabs();
-  syncTerrainToTabs();
+  applyLinksFrom(null);
 }
 
-// L'altitude terrain alimente l'altitude indiquée de l'onglet Altitudes (au sol, elles sont
-// identiques), sauf si le pilote y a saisi une autre altitude — sa valeur prime alors.
-function syncTerrainToTabs(){
-  const src = document.getElementById('shared_alt');
-  const dst = document.getElementById('A_ALT');
-  if(!src || !dst || src.value === '' || +src.value === 0) return;
-  // On ne remplit que si la case n'a pas été modifiée depuis le dernier report du terrain :
-  // une altitude saisie volontairement (ex. altitude de croisière) n'est jamais écrasée,
-  // y compris après réouverture de l'application.
-  const seed = localStorage.getItem('outils2_terrain_seed');
-  const libre = !dst.dataset.manual && (seed === null || dst.value === seed || dst.value === '' || +dst.value === 0);
-  if(!libre) return;
-  dst.value = src.value;
+// ── Report des conditions du vol vers les onglets ──
+// Une seule règle pour toute l'application : ce qui est saisi dans l'onglet Partagé est
+// reporté dans les onglets qui l'utilisent. Si vous modifiez la valeur sur place, elle
+// devient LOCALE (bordure orange) : elle n'est plus écrasée, et le bouton ↺ à côté du
+// champ la ramène à la valeur du vol.
+const LINKS = [
+  { src:'shared_qnh',   dst:'A_QNH'  },
+  { src:'shared_oat',   dst:'A_OAT'  },
+  { src:'A_OAT',        dst:'R_OAT'  },   // l'OAT du ROC est celle de l'altitude considérée
+  { src:'shared_alt',   dst:'A_ALT'  },
+  { src:'shared_alt',   dst:'C_ZDEP' },
+  { src:'shared_masse', dst:'V_M'    },
+  { src:'shared_masse', dst:'R_M'    },
+  { src:'shared_qfu',   dst:'T_QFU'  },
+  { src:'shared_qfu',   dst:'W_QFU'  },
+  { src:'shared_wdir',  dst:'W_DIR'  },
+  { src:'shared_wspd',  dst:'W_SPD'  },
+  { src:'shared_wgust', dst:'W_GUST' }
+];
+
+function isOverridden(id){ return localStorage.getItem('outils2_ovr_' + id) === '1'; }
+function setOverridden(id, on){
   try{
-    localStorage.setItem('outils2_alt_locale', dst.value);
-    localStorage.setItem('outils2_terrain_seed', dst.value);
+    if(on) localStorage.setItem('outils2_ovr_' + id, '1');
+    else localStorage.removeItem('outils2_ovr_' + id);
   }catch(e){}
+  updateOvrBadge(id);
 }
 
-// Propage la masse saisie (ou trouvée) ici vers les onglets qui l'utilisent par défaut
-function syncMasseToTabs(){
-  const masseEl = document.getElementById('shared_masse');
-  const val = masseEl ? masseEl.value : '';
-  if(val === '') return;
-  const vm = document.getElementById('V_M');
-  if(vm && !vm.dataset.manual) vm.value = val;
-  const rm = document.getElementById('R_M');
-  if(rm && !rm.dataset.manual) rm.value = val;
-  // Plafond de l'onglet Vx/Vy : rempli depuis la masse via l'interpolation POH (onglet ROC),
-  // sauf si l'utilisateur l'a modifié à la main
+function applyLinksFrom(srcId){
+  let changed = false;
+  LINKS.forEach(l => {
+    if(srcId !== null && l.src !== srcId) return;
+    const src = document.getElementById(l.src), dst = document.getElementById(l.dst);
+    if(!src || !dst || src.value === '') return;
+    if(!isOverridden(l.dst) && dst.value !== src.value){
+      dst.value = src.value;
+      try{ localStorage.setItem('outils2_field_' + l.dst, dst.value); }catch(e){}
+      changed = true;
+    }
+    if(applyLinksFrom(l.dst)) changed = true;   // report en cascade
+  });
+  syncDerived();
+  return changed;
+}
+
+// Valeurs déduites : plafond POH (masse) et vitesse sol en vent arrière (vent + QFU)
+function syncDerived(){
+  const m = +(document.getElementById('shared_masse')?.value || 0);
   const xc = document.getElementById('X_CEIL');
-  const mNum = +val;
-  if(xc && !xc.dataset.manual && mNum > 0){
-    xc.value = Math.round(poh_ceiling(mNum));
-    if(typeof calcVxVy === 'function' && document.getElementById('p7_graph')) calcVxVy();
-  }
-}
-
-// Propage QNH/OAT saisis dans l'onglet Partagé vers l'onglet Altitudes
-function syncQnhOatToTabs(){
-  const qnhVal = document.getElementById('shared_qnh')?.value;
-  const oatVal = document.getElementById('shared_oat')?.value;
-  if(qnhVal){
-    const aq = document.getElementById('A_QNH');
-    if(aq && !aq.dataset.manual) aq.value = qnhVal;
-  }
-  if(oatVal){
-    // Même règle que pour le ROC : une OAT saisie en altitude n'est pas écrasée par celle
-    // du terrain, y compris après réouverture.
-    const ao = document.getElementById('A_OAT');
-    if(ao){
-      const seed = localStorage.getItem('outils2_seed_aoat');
-      const libre = !ao.dataset.manual && (seed === null || ao.value === seed || ao.value === '');
-      if(libre){
-        ao.value = oatVal;
-        try{
-          localStorage.setItem('outils2_aoat_locale', ao.value);
-          localStorage.setItem('outils2_seed_aoat', ao.value);
-        }catch(e){}
-      }
+  if(xc && !isOverridden('X_CEIL') && m > 0){
+    const v = String(Math.round(poh_ceiling(m)));
+    if(xc.value !== v){
+      xc.value = v;
+      try{ localStorage.setItem('outils2_field_X_CEIL', v); }catch(e){}
+      if(typeof calcVxVy === 'function' && document.getElementById('p7_graph')) calcVxVy();
     }
   }
-  syncOatToRoc();
+  // Vent arrière : vitesse sol = vitesse club 80 kt + composante de face sur la piste
+  const vg = document.getElementById('T_VG');
+  const spd = +(document.getElementById('shared_wspd')?.value || 0);
+  const dir = +(document.getElementById('shared_wdir')?.value || 0);
+  const qfu = +(document.getElementById('T_QFU')?.value || 0);
+  if(vg && !isOverridden('T_VG') && spd > 0){
+    let ang = mod360(dir - qfu);
+    if(ang > 180) ang -= 360;
+    const v = String(Math.round(80 + spd * Math.cos(ang * Math.PI / 180)));
+    if(vg.value !== v){
+      vg.value = v;
+      try{ localStorage.setItem('outils2_field_T_VG', v); }catch(e){}
+    }
+  }
 }
 
-// L'OAT du ROC est celle de l'altitude considérée, donc celle de l'onglet Altitudes —
-// pas celle du terrain. Reprise automatique, sauf si elle a été modifiée dans l'onglet ROC :
-// la saisie du pilote est alors conservée, y compris après réouverture de l'application.
-function syncOatToRoc(){
-  const src = document.getElementById('A_OAT');
-  const dst = document.getElementById('R_OAT');
-  if(!src || !dst || src.value === '') return;
-  const seed = localStorage.getItem('outils2_seed_roat');
-  const libre = !dst.dataset.manual && (seed === null || dst.value === seed || dst.value === '');
-  if(!libre) return;
-  dst.value = src.value;
-  try{
-    localStorage.setItem('outils2_roat_locale', dst.value);
-    localStorage.setItem('outils2_seed_roat', dst.value);
-  }catch(e){}
-  if(typeof refreshStale === 'function') refreshStale('p5');
+// Bouton ↺ affiché à côté d'un champ devenu local
+function updateOvrBadge(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const on = isOverridden(id);
+  el.style.borderColor = on ? 'var(--warn)' : '';
+  let b = document.getElementById('ovr_' + id);
+  if(on && !b){
+    b = document.createElement('button');
+    b.id = 'ovr_' + id;
+    b.type = 'button';
+    b.className = 'ovr-reset';
+    b.textContent = '↺';
+    b.title = 'Revenir à la valeur du vol';
+    b.addEventListener('click', () => {
+      setOverridden(id, false);
+      applyLinksFrom(null);
+      if(typeof updateVentInfo === 'function') updateVentInfo();
+      if(typeof refreshAllStale === 'function') refreshAllStale();
+    });
+    el.parentNode.insertBefore(b, el.nextSibling);
+  } else if(!on && b){
+    b.remove();
+  }
 }
-document.getElementById('A_OAT')?.addEventListener('input', syncOatToRoc);
 
-document.getElementById('shared_qnh')?.addEventListener('input', function(){
-  if(this.value !== '') localStorage.setItem('hrej_QNH', this.value);
-  syncQnhOatToTabs();
+// Un champ relié devient local dès qu'on le modifie sur place
+LINKS.concat([{src:'shared_masse',dst:'X_CEIL'},{src:'shared_wspd',dst:'T_VG'}]).forEach(l => {
+  const dst = document.getElementById(l.dst);
+  if(!dst || dst.dataset.linked) return;
+  dst.dataset.linked = '1';
+  dst.addEventListener('input', function(){
+    const src = document.getElementById(l.src);
+    setOverridden(l.dst, !src || this.value !== src.value);
+    try{ localStorage.setItem('outils2_field_' + l.dst, this.value); }catch(e){}
+    applyLinksFrom(l.dst);
+    if(typeof refreshAllStale === 'function') refreshAllStale();
+  });
+  updateOvrBadge(l.dst);
 });
-document.getElementById('shared_oat')?.addEventListener('input', function(){
-  if(this.value !== '') localStorage.setItem('hrej_OAT', this.value);
-  syncQnhOatToTabs();
-});
-document.getElementById('shared_masse')?.addEventListener('input', function(){
-  if(this.value !== '') localStorage.setItem('outils2_masse_locale', this.value);
-  syncMasseToTabs();
-});
-document.getElementById('shared_obstacle')?.addEventListener('input', function(){
-  if(this.value !== '') localStorage.setItem('outils2_obstacle_locale', this.value);
-});
-document.getElementById('shared_alt')?.addEventListener('input', function(){
-  if(this.value !== '') localStorage.setItem('outils2_terrain_locale', this.value);
-  syncTerrainToTabs();
-  if(typeof refreshAllStale === 'function') refreshAllStale();
+
+// Champs de l'onglet Partagé : mémorisation puis report
+[['shared_qnh','hrej_QNH'], ['shared_oat','hrej_OAT'], ['shared_masse','outils2_masse_locale'],
+ ['shared_obstacle','outils2_obstacle_locale'], ['shared_alt','outils2_terrain_locale'],
+ ['shared_qfu','outils2_qfu_locale'], ['shared_wdir','outils2_wdir_locale'],
+ ['shared_wspd','outils2_wspd_locale'], ['shared_wgust','outils2_wgust_locale']].forEach(([id, key]) => {
+  document.getElementById(id)?.addEventListener('input', function(){
+    if(this.value !== ''){ try{ localStorage.setItem(key, this.value); }catch(e){} }
+    applyLinksFrom(id);
+    if(typeof updateVentInfo === 'function') updateVentInfo();
+    if(typeof updateVappAuto === 'function') updateVappAuto();
+    if(typeof refreshAllStale === 'function') refreshAllStale();
+  });
 });
 
 // Mode de saisie masse : simple (champ direct) ou détaillée (postes + calcul en direct)
@@ -640,10 +726,7 @@ if(savedMasseMode){
   if(r) r.checked = true;
 }
 applyMasseMode();
-document.getElementById('A_ALT')?.addEventListener('input', function(){
-  if(this.value !== '') localStorage.setItem('outils2_alt_locale', this.value);
-  this.dataset.manual = '1';
-});
+
 document.getElementById('A_FL')?.addEventListener('input', function(){
   if(this.value !== '') localStorage.setItem('outils2_fl_locale', this.value);
 });
@@ -657,8 +740,8 @@ document.getElementById('R_OAT')?.addEventListener('input', function(){
 // Persistance générique : tous les champs de réglage sans logique de synchro dédiée
 // (évite d'écrire un bloc dédié pour chacun — se recharge automatiquement à chaque ouverture)
 const GENERIC_PERSIST_IDS = [
-  'V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','V_WDIR','V_WSPD','V_WGUST',
-  'T_QFU','T_XNM','T_VG',
+  'V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','A_QNH','A_OAT','A_ALT','R_OAT','R_M','V_M',
+  'T_QFU','T_XNM','T_VG','C_ZCOL','C_MARGE','C_DIST','C_CAP','C_VIAS','C_TALT','C_ZREF',
   'W_DIR','W_SPD','W_GUST','W_QFU','W_XLIM','W_VAPP'
 ];
 function restoreGenericFields(){
@@ -678,13 +761,7 @@ GENERIC_PERSIST_IDS.forEach(id => {
 });
 restoreGenericFields();
 
-document.getElementById('V_M')?.addEventListener('input', () => { document.getElementById('V_M').dataset.manual = '1'; });document.getElementById('R_M')?.addEventListener('input', () => { document.getElementById('R_M').dataset.manual = '1'; });
-document.getElementById('A_QNH')?.addEventListener('input', () => { document.getElementById('A_QNH').dataset.manual = '1'; });
-document.getElementById('A_OAT')?.addEventListener('input', function(){
-  this.dataset.manual = '1';
-  try{ localStorage.setItem('outils2_aoat_locale', this.value); }catch(e){}
-});
-document.getElementById('R_OAT')?.addEventListener('input', () => { document.getElementById('R_OAT').dataset.manual = '1'; });
+
 document.getElementById('R_PA')?.addEventListener('input', () => { document.getElementById('R_PA').dataset.manual = '1'; });
 
 // ── Onglet 2 : Vitesses caractéristiques (formules HP-19BII) ──
@@ -692,7 +769,7 @@ function vv(id){ const el = document.getElementById(id); return el ? (+el.value 
 
 // Composantes du vent saisi dans l'onglet Vitesses, rapportées au QFU du Tour de piste
 function ventVitesses(){
-  const dir = vv('V_WDIR'), spd = vv('V_WSPD'), gust = vv('V_WGUST'), qfu = vv('T_QFU');
+  const dir = vv('shared_wdir'), spd = vv('shared_wspd'), gust = vv('shared_wgust'), qfu = vv('T_QFU');
   let a = mod360(dir - qfu);
   if(a > 180) a -= 360;
   const rad = a * Math.PI / 180;
@@ -710,31 +787,7 @@ function updateVentInfo(){
   const face = c.face > 0.5 ? `${rkt(c.face)} kt de face` : (c.face < -0.5 ? `<span style="color:var(--bad)">${rkt(c.face)} kt arrière</span>` : 'traversier pur');
   box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🌬️ Piste ${Math.round(mod360(c.qfu))}° — <b>${face}</b> · traversier <b>${rkt(c.trav)} kt ${c.trav >= 0 ? 'droite' : 'gauche'}</b></div>`;
 }
-['V_WDIR','V_WSPD','V_WGUST','T_QFU'].forEach(id => {
-  document.getElementById(id)?.addEventListener('input', () => { updateVentInfo(); syncVentToTravers(); });
-});
-
-// Le vent saisi ici alimente l'onglet Vent de travers, où il reste modifiable :
-// une valeur modifiée là-bas n'est jamais écrasée (même principe que l'altitude terrain).
-function syncVentToTravers(){
-  [['V_WDIR','W_DIR','wdir'],['V_WSPD','W_SPD','wspd'],['V_WGUST','W_GUST','wgust']].forEach(([from, to, key]) => {
-    const src = document.getElementById(from), dst = document.getElementById(to);
-    if(!src || !dst || src.value === '') return;
-    const seed = localStorage.getItem('outils2_seed_' + key);
-    const libre = !dst.dataset.manual && (seed === null || dst.value === seed || dst.value === '' || +dst.value === 0);
-    if(!libre) return;
-    dst.value = src.value;
-    try{
-      localStorage.setItem('outils2_field_' + to, dst.value);
-      localStorage.setItem('outils2_seed_' + key, dst.value);
-    }catch(e){}
-  });
-  if(typeof updateVappAuto === 'function') updateVappAuto();
-  if(typeof refreshStale === 'function') refreshStale('p4');
-}
-['W_DIR','W_SPD','W_GUST'].forEach(id => {
-  document.getElementById(id)?.addEventListener('input', function(){ this.dataset.manual = '1'; });
-});
+document.getElementById('T_QFU')?.addEventListener('input', updateVentInfo);
 
 function buildASIGauge(VS1, VS0, VFE, VNO, VNE, VA){
   const cx=150, cy=150, R=128, bandW=18;
@@ -871,7 +924,7 @@ function calcVitesses(){
 
   // 5. Vitesses club fixes. Le vent est saisi en direction/force/rafales : la composante
   // de face se déduit du QFU de l'onglet Tour de piste. Un vent arrière ne majore rien.
-  const WDIR_V = vv('V_WDIR'), WSPD_V = vv('V_WSPD'), WGUST_V = vv('V_WGUST');
+  const WDIR_V = vv('shared_wdir'), WSPD_V = vv('shared_wspd'), WGUST_V = vv('shared_wgust');
   const QFU_V = vv('T_QFU');
   let angV = mod360(WDIR_V - QFU_V);
   if(angV > 180) angV -= 360;
@@ -1595,7 +1648,7 @@ if(savedXChart){
 // pour ne jamais lire des chiffres issus d'anciennes données.
 const CALC_TABS = {
   p2: { fn:'calcVitesses', label:'Calculer les vitesses',
-        inputs:['V_M','V_WMAX','V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','V_WDIR','V_WSPD','V_WGUST','T_QFU'],
+        inputs:['V_M','V_WMAX','V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','A_QNH','A_OAT','A_ALT','R_OAT','R_M','V_M','T_QFU'],
         radios:['V_VOLET'], outs:['p2_gauge','p2_out'], stale:'p2_stale' },
   p3: { fn:'calcTourPiste', label:'Calculer le tour de piste',
         inputs:['T_QFU','T_XNM','T_VG'], radios:['T_MD'],
@@ -1606,6 +1659,9 @@ const CALC_TABS = {
   p5: { fn:'calcROCDensite', label:'Calculer ROC et plafond',
         inputs:['R_M','R_PA','R_OAT'], radios:[],
         outs:['p5_out'], stale:'p5_stale' },
+  pc: { fn:'calcFranchissement', label:'Calculer le franchissement',
+        inputs:['C_ZDEP','C_ZCOL','C_MARGE','C_DIST','C_CAP','C_VIAS','C_TALT','C_ZREF','A_QNH','shared_oat','shared_alt','shared_masse','shared_wdir','shared_wspd'],
+        radios:[], outs:['C_out'], stale:'C_stale' },
   p4: { fn:'calcVentTravers', label:'Calculer le vent de travers',
         inputs:['W_DIR','W_SPD','W_GUST','W_QFU','W_XLIM','W_VAPP'], radios:[],
         outs:['p4_final','p4_out'], stale:'p4_stale' }
@@ -1633,6 +1689,7 @@ function saveCalc(key){
     localStorage.setItem('outils2_calc_' + key, JSON.stringify({ sig: calcSignature(key), ts: Date.now(), html }));
   }catch(e){ /* quota atteint : le calcul reste affiché, seule la sauvegarde échoue */ }
   refreshStale(key);
+  if(typeof renderDashboard === 'function') renderDashboard();
 }
 
 function restoreCalc(key){
@@ -1959,43 +2016,129 @@ function calcVentTravers(){
   if(typeof renderDashboard === 'function') renderDashboard();
 }
 
-// QFU : l'onglet Tour de piste alimente l'onglet Vent de travers, sauf si le pilote
-// a saisi un QFU différent ici (par ex. pour comparer une autre piste) — sa valeur prime alors.
-function syncQfuToWind(){
-  const t = document.getElementById('T_QFU'), w = document.getElementById('W_QFU');
-  if(t && w && !w.dataset.manual && t.value !== ''){
-    w.value = t.value;
-    localStorage.setItem('outils2_field_W_QFU', w.value);
-    if(typeof refreshStale === 'function') refreshStale('p4');
+// ── Franchissement d'un col / obstacle ──
+// Méthode reprise à l'identique de l'application de prévol (formule HP-19), à une
+// correction près : l'altitude atteinte est convertie en altitude VRAIE avant d'être
+// comparée au relief. Comparer une altitude affichée à une altitude réelle mélange
+// deux référentiels — par temps froid, l'avion est plus bas que ce qu'indique l'altimètre.
+function calcFranchissement(){
+  const QNH  = vv('A_QNH') || 1013;
+  const ZDEP = vv('C_ZDEP'), ZCOL = vv('C_ZCOL'), MARGE = vv('C_MARGE');
+  const DIST = vv('C_DIST'), CAP = vv('C_CAP'), VIAS = vv('C_VIAS');
+  const TSOL = vv('shared_oat'), ZSOL = vv('shared_alt');
+  const TALT = vv('C_TALT'), ZREF = vv('C_ZREF');
+  const M    = vv('shared_masse') || vv('R_M');
+  const WDIR = vv('shared_wdir'), WSPD = vv('shared_wspd');
+  const out  = document.getElementById('C_out');
+  if(!out) return;
+
+  const manque = [];
+  if(ZCOL <= 0) manque.push('altitude du col');
+  if(DIST <= 0) manque.push('distance');
+  if(VIAS <= 0) manque.push('vitesse de montée');
+  if(M <= 0)    manque.push('masse');
+  if(manque.length){
+    out.innerHTML = `<div class="banner-warn">⚠️ Renseignez : ${manque.join(', ')}.</div>`;
+    setFlight('pc', { alerts: [] });
+    if(typeof renderDashboard === 'function') renderDashboard();
+    return;
   }
-}
-document.getElementById('T_QFU')?.addEventListener('input', syncQfuToWind);
-document.getElementById('W_QFU')?.addEventListener('input', function(){ this.dataset.manual = '1'; });
-if(localStorage.getItem('outils2_field_W_QFU') !== null) document.getElementById('W_QFU')?.setAttribute('data-manual','1');
 
-// Vitesse d'approche : la saisie manuelle prime (mémorisée d'une session à l'autre),
-// le bouton rétablit le calcul automatique depuis le vent.
-document.getElementById('W_VAPP')?.addEventListener('input', function(){
-  this.dataset.manual = '1';
-  try{ localStorage.setItem('outils2_vapp_manual', '1'); }catch(e){}
-  updateVappStatus();
-});
-if(localStorage.getItem('outils2_vapp_manual') === '1'){
-  document.getElementById('W_VAPP')?.setAttribute('data-manual','1');
-}
-function resetVappAuto(){
-  const el = document.getElementById('W_VAPP');
-  if(el) delete el.dataset.manual;
-  try{ localStorage.removeItem('outils2_vapp_manual'); }catch(e){}
-  updateVappAuto();
-  calcVentTravers();
-}
+  // Gradient thermique réel, déduit des deux températures connues (sol et altitude).
+  // Sans seconde température, on retombe sur le gradient standard de 1,98 °C/1000 ft.
+  const gradOK = ZREF > ZSOL && (TALT !== 0 || TSOL !== 0);
+  const grad = gradOK ? (TSOL - TALT) / ((ZREF - ZSOL) / 1000) : 1.98;
+  const tempA = z => TSOL - grad * (z - ZSOL) / 1000;      // température à l'altitude z
+  const paDe  = z => z + (1013 - QNH) * 27;                 // altitude-pression
+  const isaA  = pa => 15 - 1.98 * (pa / 1000);
 
-// La vitesse d'approche suit le vent en direct : dès qu'un élément du vent ou le QFU change,
-// elle se recalcule sans attendre le bouton (sauf saisie manuelle).
-['W_DIR','W_SPD','W_GUST','W_QFU'].forEach(id => {
-  document.getElementById(id)?.addEventListener('input', updateVappAuto);
-});
+  // Altitude densité au niveau moyen : sert au calcul de la TAS
+  const zMid = (ZDEP + ZCOL) / 2;
+  const paMid = paDe(zMid);
+  const daMid = paMid + 120 * (tempA(zMid) - isaA(paMid));
+
+  const TAS = VIAS * (1 + 0.02 * daMid / 1000);
+
+  // Vitesse sol : résolution du triangle des vitesses (dérive comprise)
+  let GS = TAS;
+  if(WSPD > 0){
+    const wta = mod360(WDIR - CAP) * Math.PI / 180;
+    const xw = WSPD * Math.sin(wta);
+    const hw = WSPD * Math.cos(wta);
+    const rap = Math.min(1, Math.abs(xw) / TAS);
+    GS = TAS * Math.sqrt(1 - rap * rap) - hw;
+  }
+  if(GS <= 0){
+    out.innerHTML = `<div class="banner-bad">🛑 Vitesse sol nulle ou négative — vent de face supérieur à la vitesse de montée.</div>`;
+    setFlight('pc', { alerts: [{ level:'bad', text:'Franchissement : vitesse sol nulle (vent de face trop fort).' }] });
+    if(typeof renderDashboard === 'function') renderDashboard();
+    return;
+  }
+
+  // Taux de montée POH aux trois altitudes, corrigés de l'écart ISA réel
+  const vzA = z => {
+    const pa = paDe(z);
+    const ms = poh_roc_sl(M) - poh_reduction(M) * (pa / 1000) - 0.22 * ((tempA(z) - isaA(pa)) / 10);
+    return ms * MS_TO_FPM;
+  };
+  const vzDep = vzA(ZDEP), vzMid = vzA(zMid), vzCol = vzA(ZCOL);
+  const vzMoy = (vzDep + 4 * vzMid + vzCol) / 6;            // intégration de Simpson
+
+  const tMin = DIST / GS * 60;
+  const gain = vzMoy * tMin;
+  const ziAtteinte = ZDEP + gain;                           // altitude AFFICHÉE atteinte
+
+  // Conversion en altitude vraie : c'est elle qui se compare au relief
+  const paAtt = paDe(ziAtteinte);
+  const zvAtteinte = ziAtteinte * ((tempA(ziAtteinte) + 273.15) / (isaA(paAtt) + 273.15));
+  const marge = zvAtteinte - (ZCOL + MARGE);
+
+  let html = '';
+  const alerts = [];
+  if(vzMoy <= 0){
+    html += `<div class="banner-bad">🛑 Taux de montée nul ou négatif à cette masse et cette température — franchissement impossible.</div>`;
+    alerts.push({ level:'bad', text:'Franchissement : taux de montée nul — impossible dans ces conditions.' });
+  } else if(marge < 0){
+    html += `<div class="banner-bad">🛑 <b>Ne passe pas</b> — il manque ${Math.abs(Math.round(marge))} ft sur ${DIST} NM.</div>`;
+    alerts.push({ level:'bad', text:`Col : ne passe pas, il manque ${Math.abs(Math.round(marge))} ft sur ${DIST} NM.` });
+  } else if(marge < 300){
+    html += `<div class="banner-warn">⚠️ Passe de justesse : ${Math.round(marge)} ft au-dessus de la marge demandée.</div>`;
+    alerts.push({ level:'warn', text:`Col : marge serrée (${Math.round(marge)} ft au-delà de la marge demandée).` });
+  } else {
+    html += `<div class="banner-ok">✅ Passe avec ${Math.round(marge)} ft au-dessus de la marge demandée.</div>`;
+  }
+
+  html += `<div class="section-title">Résultat au col</div>`;
+  html += `<div class="kvline"><span class="k">Altitude affichée atteinte (altimètre)</span><span class="v">${Math.round(ziAtteinte)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude vraie atteinte</span><span class="v" style="color:var(--accent-2)">${Math.round(zvAtteinte)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Col + marge de ${Math.round(MARGE)} ft</span><span class="v">${Math.round(ZCOL + MARGE)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Marge finale</span><span class="v" style="color:${marge < 0 ? 'var(--bad)' : 'var(--ok)'}">${marge >= 0 ? '+' : ''}${Math.round(marge)} ft</span></div>`;
+
+  html += `<div class="section-title">Détail de la montée</div>`;
+  html += `<div class="kvline"><span class="k">Gradient thermique retenu</span><span class="v">${grad.toFixed(2)} °C / 1000 ft${gradOK ? '' : ' (standard)'}</span></div>`;
+  html += `<div class="kvline"><span class="k">Altitude densité moyenne</span><span class="v">${Math.round(daMid)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">TAS</span><span class="v">${TAS.toFixed(1)} kt</span></div>`;
+  html += `<div class="kvline"><span class="k">Vitesse sol</span><span class="v">${GS.toFixed(1)} kt</span></div>`;
+  // Les altitudes sont rappelées pour permettre la comparaison directe avec l'onglet ROC,
+  // qui calcule à une seule altitude-pression.
+  html += `<div class="kvline"><span class="k">Vz au départ (${Math.round(ZDEP)} ft · PA ${Math.round(paDe(ZDEP))} ft)</span><span class="v">${Math.round(vzDep)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Vz à mi-parcours (${Math.round(zMid)} ft · PA ${Math.round(paMid)} ft)</span><span class="v">${Math.round(vzMid)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Vz au col (${Math.round(ZCOL)} ft · PA ${Math.round(paDe(ZCOL))} ft)</span><span class="v">${Math.round(vzCol)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Vz moyen retenu (Simpson, sur toute la montée)</span><span class="v">${Math.round(vzMoy)} ft/min</span></div>`;
+  html += `<div class="kvline"><span class="k">Temps de montée</span><span class="v">${tMin.toFixed(1)} min</span></div>`;
+  html += `<div class="kvline"><span class="k">Gain d'altitude</span><span class="v">${Math.round(gain)} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Pente moyenne</span><span class="v">${Math.round(vzMoy / GS * 60)} ft/NM</span></div>`;
+
+  html += `<div class="notes" style="margin-top:8px">Le <b>Vz moyen</b> est celui qui sert au calcul du gain : il porte sur toute la montée, il est donc supérieur au Vz au col. Pour retrouver la valeur de l'onglet <b>ROC densité</b>, comparez à altitude-pression égale.<br>L'altitude atteinte est convertie en <b>altitude vraie</b> avant comparaison avec le relief : c'est la seule comparaison valable, l'altimètre surestimant l'altitude réelle par temps froid.<br>⚠️ Calcul en air calme et pleine puissance : près d'un relief, les <b>rabattants</b> peuvent annuler ce taux de montée. Prévoyez toujours un demi-tour possible.</div>`;
+
+  out.innerHTML = html;
+  setFlight('pc', {
+    zi: Math.round(ziAtteinte), zv: Math.round(zvAtteinte),
+    marge: Math.round(marge), pente: Math.round(vzMoy / GS * 60),
+    vz: Math.round(vzMoy), temps: tMin.toFixed(1), alerts
+  });
+  if(typeof renderDashboard === 'function') renderDashboard();
+}
 
 // ── Tableau de bord « Vol du jour » ──
 // Chaque onglet dépose ici ses valeurs clés au moment de son calcul. Le tableau de bord
@@ -2004,7 +2147,7 @@ function resetVappAuto(){
 let FLIGHT = {};
 try{ FLIGHT = JSON.parse(localStorage.getItem('outils2_flight') || '{}') || {}; }catch(e){ FLIGHT = {}; }
 
-const TAB_NAMES = { p2:'Vitesses', p3:'Tour de piste', p4:'Vent de travers', p5:'ROC densité', p6:'Altitudes' };
+const TAB_NAMES = { p2:'Vitesses', p3:'Tour de piste', p4:'Vent de travers', p5:'ROC densité', p6:'Altitudes', pc:'Franchissement' };
 
 function setFlight(key, data){
   FLIGHT[key] = data;
@@ -2019,7 +2162,7 @@ function isStale(key){
   }catch(e){ return null; }
 }
 
-// Cellule compacte : libellé court au-dessus, valeur en gros
+// Cellule compacte du niveau 2 : libellé court au-dessus, valeur en dessous
 function cell(k, v, opt){
   opt = opt || {};
   if(v === undefined || v === null || v === '') return '';
@@ -2030,9 +2173,65 @@ function dashCard(title, cells, key){
   const inner = cells.filter(Boolean).join('');
   if(!inner) return '';
   const st = key ? isStale(key) : false;
-  const flag = st === null ? ` <span style="color:var(--text-dim);font-weight:400;text-transform:none">— non calculé</span>`
-             : st ? ` <span style="color:var(--bad);font-weight:400;text-transform:none">— à recalculer</span>` : '';
-  return `<div class="section-title">${title}${flag}</div><div class="dash${st ? ' dash-stale' : ''}">${inner}</div>`;
+  const badge = st === null ? `<span class="badge" style="background:transparent;border-color:var(--border-2);color:var(--text-dim)">non calculé</span>`
+              : st ? `<span class="badge">à recalculer</span>` : '';
+  return `<div class="phase-head"><span>${title}</span>${badge}</div><div class="dash${st ? ' dash-stale' : ''}">${inner}</div>`;
+}
+
+// Cellule du bloc « À retenir » : grand chiffre, unité discrète, cadre rouge si alerte
+function keyCell(k, val, unit, opt){
+  opt = opt || {};
+  if(val === undefined || val === null || val === '') return '';
+  // Une valeur périmée reste affichée mais atténuée et étiquetée : la faire disparaître
+  // donnerait l'impression d'un dysfonctionnement, alors qu'il faut simplement recalculer.
+  const cls = `kc${opt.alert && !opt.stale ? ' alert' : ''}${opt.wide ? ' wide' : ''}${opt.stale ? ' stale' : ''}`;
+  return `<div class="${cls}">
+    <div class="k">${k}${opt.stale ? '<span class="old">à recalculer</span>' : ''}</div>
+    <div class="v" style="color:${opt.color || 'var(--val)'}">${val}${unit ? `<span class="u">${unit}</span>` : ''}</div>
+  </div>`;
+}
+
+// Niveau 1 : uniquement ce qui change avec les conditions du jour.
+// Les consignes club invariables (55, 70, 80 kt) restent au niveau 2.
+function renderKeyBlock(){
+  const box = document.getElementById('p0_key');
+  if(!box) return;
+  const v = FLIGHT.p2 || {}, w = FLIGHT.p4 || {}, r = FLIGHT.p5 || {}, a = FLIGHT.p6 || {}, c = FLIGHT.pc || {};
+  const sv = isStale('p2') === true, sw = isStale('p4') === true,
+        sr = isStale('p5') === true, sa = isStale('p6') === true, sc = isStale('pc') === true;
+
+  const cells = [
+    keyCell('Plancher anti-décrochage', v.vsVirage, ' kt', { color:'var(--bad)', alert:true, stale:sv }),
+    keyCell('Vitesse d\'approche', w.vapp, ' kt', { color:'var(--accent-2)', stale:sw }),
+    keyCell('Cap à tenir en finale', w.cap !== undefined ? w.cap : null, '°', { color:'var(--accent-2)', stale:sw }),
+    keyCell('Meilleur taux (Vy)', w.vy, ' kt', { stale:sw }),
+    // Le vent de face n'apparaît pas ici : il est déjà intégré à la vitesse d'approche.
+    // Seul le vent arrière est signalé, car il change la décision de piste.
+    keyCell('Vent arrière', w.face !== undefined && w.face < 0 ? Math.abs(w.face) : null, ' kt',
+            { color:'var(--bad)', alert:true, stale:sw }),
+    keyCell('Traversier (vent)', w.trav, ' kt' + (w.trav > 0 && w.travCote ? ' ' + w.travCote : ''),
+            { color: w.travDepasse ? 'var(--bad)' : 'var(--val)', alert: w.travDepasse, stale:sw }),
+    keyCell('Marge au col', c.marge !== undefined ? c.marge : null, ' ft',
+            { color: c.marge < 0 ? 'var(--bad)' : 'var(--ok)', alert: c.marge < 0, stale:sc }),
+    keyCell('Marge obstacle', a.marge !== undefined ? a.marge : null, ' ft',
+            { color: a.marge < 500 ? 'var(--bad)' : 'var(--ok)', alert: a.marge < 500, stale:sa }),
+    keyCell(r.pa !== undefined ? `ROC à ${r.pa} ft` : 'ROC', r.roc, ' ft/min',
+            { color: r.roc < 200 ? 'var(--bad)' : 'var(--val)', alert: r.roc < 200, stale:sr })
+  ].filter(Boolean);
+
+  box.innerHTML = cells.length
+    ? `<div class="phase-head" style="border-left-color:var(--val)"><span>⭐ À retenir</span></div><div class="keygrid">${cells.join('')}</div>`
+    : `<div class="notes">Lancez les calculs pour voir apparaître les valeurs du jour.</div>`;
+}
+
+// Le détail par phase est replié par défaut : le premier écran reste dédié à l'essentiel
+function toggleDetail(){
+  const box = document.getElementById('p0_out'), btn = document.getElementById('p0_toggle');
+  if(!box || !btn) return;
+  const open = box.style.display !== 'none';
+  box.style.display = open ? 'none' : '';
+  btn.textContent = open ? '▾ Détails par phase' : '▴ Masquer les détails';
+  try{ localStorage.setItem('outils2_detail_open', open ? '0' : '1'); }catch(e){}
 }
 
 function renderDashboard(){
@@ -2048,9 +2247,9 @@ function renderDashboard(){
     else if(s) stales.push(TAB_NAMES[k] || k);
   });
   if(stales.length){
-    fresh.innerHTML = `<div class="banner-bad">⚠️ À recalculer : <b>${stales.join(', ')}</b> — les valeurs grisées ci-dessous sont périmées.</div>`;
+    fresh.innerHTML = `<div class="banner-bad">⚠️ À recalculer : <b>${stales.join(', ')}</b> — les valeurs marquées ci-dessous sont périmées.</div>`;
   } else if(missing.length === Object.keys(CALC_TABS).length){
-    fresh.innerHTML = `<div class="banner-warn">Aucun calcul effectué — saisissez vos données dans les onglets, ou appuyez sur « Tout recalculer ».</div>`;
+    fresh.innerHTML = `<div class="banner-warn">Aucun calcul effectué — saisissez vos données dans l'onglet Partagé, puis appuyez sur « Tout recalculer ».</div>`;
   } else if(missing.length){
     fresh.innerHTML = `<div class="banner-warn">Pas encore calculé : ${missing.join(', ')}.</div>`;
   } else {
@@ -2063,11 +2262,19 @@ function renderDashboard(){
     if(isStale(k)) return;                    // une alerte périmée n'est pas une alerte
     (FLIGHT[k]?.alerts || []).forEach(a => alerts.push(a));
   });
-  let html = '';
-  if(alerts.length){
-    html += `<div class="section-title">⚠️ Points de vigilance</div>`;
-    alerts.forEach(a => { html += `<div class="banner-${a.level}" style="text-align:left">${a.text}</div>`; });
+  // Les points de vigilance restent toujours visibles : ils ne doivent jamais être
+  // masqués par le repli des détails.
+  const alertBox = document.getElementById('p0_alerts');
+  if(alertBox){
+    if(alerts.length){
+      let ah = `<div class="phase-head" style="border-left-color:var(--bad)"><span>⚠️ Points de vigilance</span><span class="badge">${alerts.length}</span></div>`;
+      alerts.forEach(a => { ah += `<div class="banner-${a.level}" style="text-align:left">${a.text}</div>`; });
+      alertBox.innerHTML = ah;
+    } else {
+      alertBox.innerHTML = '';
+    }
   }
+  let html = '';
 
   const v = FLIGHT.p2 || {}, t = FLIGHT.p3 || {}, w = FLIGHT.p4 || {}, r = FLIGHT.p5 || {}, a = FLIGHT.p6 || {};
 
@@ -2095,7 +2302,7 @@ function renderDashboard(){
   html += dashCard('🔄 Tour de piste', [
     cell('Vent arrière', v.ventArriere ? v.ventArriere + ' kt' : null),
     cell('Sens', t.sens || null),
-    cell('Traversier', t.capT !== undefined ? t.capT + '°' : null),
+    cell('Étape traversier (cap)', t.capT !== undefined ? t.capT + '°' : null),
     cell('Vent arrière (cap)', t.capD !== undefined ? t.capD + '°' : null),
     cell('Base', t.capB !== undefined ? t.capB + '°' : null),
     cell('Finale (cap)', t.capF !== undefined ? t.capF + '°' : null),
@@ -2108,20 +2315,29 @@ function renderDashboard(){
     cell('Vitesse d\'approche', w.vapp ? w.vapp + ' kt' : (v.finale ? v.finale + ' kt' : null), { color:'var(--accent-2)' }),
     cell('Cap à tenir', w.cap !== undefined ? w.cap + '°' : null, { color:'var(--accent-2)' }),
     cell('Vent de face', w.face !== undefined ? w.face + ' kt' : null, { color: w.face < 0 ? 'var(--bad)' : 'var(--ok)' }),
-    cell('Traversier', w.trav !== undefined ? w.trav + ' kt ' + (w.travCote || '') : null, { color: w.travDepasse ? 'var(--bad)' : 'var(--val)' }),
+    cell('Traversier (vent)', w.trav !== undefined ? w.trav + ' kt ' + (w.travCote || '') : null, { color: w.travDepasse ? 'var(--bad)' : 'var(--val)' }),
     cell('Dérive', w.derive !== undefined ? w.derive + '°' : null),
     cell('Vitesse sol', w.gs !== undefined ? w.gs + ' kt' : null),
     cell('Vent observé', w.vent || null, { wide: true })
   ], 'p4');
 
   out.innerHTML = html || `<div class="notes">Lancez les calculs dans les onglets pour voir apparaître le récapitulatif du vol.</div>`;
+  renderKeyBlock();
+
+  // Restauration de l'état plié/déplié
+  const box = document.getElementById('p0_out'), btn = document.getElementById('p0_toggle');
+  if(box && btn){
+    const open = localStorage.getItem('outils2_detail_open') === '1';
+    box.style.display = open ? '' : 'none';
+    btn.textContent = open ? '▴ Masquer les détails' : '▾ Détails par phase';
+  }
 }
 
 // Relance tous les calculs d'un coup — utile en vol après un changement de paramètre
 function recalcAll(){
   // Ordre imposé par les dépendances : le vent alimente la majoration de finale (Vitesses),
   // et les Altitudes alimentent l'altitude-pression du ROC.
-  [['p4','calcVentTravers'],['p2','calcVitesses'],['p3','calcTourPiste'],['p6','calcAltitudes'],['p5','calcROCDensite']]
+  [['p4','calcVentTravers'],['p2','calcVitesses'],['p3','calcTourPiste'],['p6','calcAltitudes'],['p5','calcROCDensite'],['pc','calcFranchissement']]
     .forEach(([k, fn]) => { try{ if(typeof window[fn] === 'function') window[fn](); }catch(e){} });
   renderDashboard();
 }
@@ -2139,8 +2355,6 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 initShared();
 calcVxVy();
-syncQfuToWind();
-syncVentToTravers();
 updateVentInfo();
 updateVappAuto();
 Object.keys(CALC_TABS).forEach(restoreCalc);
