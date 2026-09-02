@@ -100,7 +100,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v29</span></div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v31</span></div>
 </header>
 
 <div class="tabs">
@@ -172,6 +172,14 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
         <input id="shared_qfu" type="number" step="1" value="0" style="width:110px">
         <span class="unit">°</span>
       </div>
+    </div>
+    <div class="shared-box">
+      <div class="lbl">Inclinaison en virage après décollage</div>
+      <div class="row" style="margin:0;padding:0;border:none;min-height:auto">
+        <input id="shared_bank" type="number" step="5" value="30" style="width:110px">
+        <span class="unit">°</span>
+      </div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:5px;line-height:1.4">Inclinaison prévue pour un virage d'évitement en montée — elle augmente la vitesse de décrochage.</div>
     </div>
     <div class="shared-box">
       <div class="lbl">Vent</div>
@@ -251,7 +259,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
         <label><input type="radio" name="V_VOLET" value="2"><span>2</span></label>
       </div>
     </div>
-    <div class="row"><label>Inclinaison en virage</label><input id="V_VIRAGE" type="number" step="1" value="0"><span class="unit">°</span></div>
+    <div class="row"><label>Inclinaison — calcul détaillé</label><input id="V_VIRAGE" type="number" step="1" value="0"><span class="unit">°</span></div>
     <div class="row"><label>Marge de sécurité</label><input id="V_SECUR" type="number" step="1" value="0"><span class="unit">%</span></div>
     <div class="notes" style="margin-top:0">VS = ROUND( VS0(volets) × √(M/WMAX) × √(1/cos(virage)) × (1+sécu/100) )<br>VS0 (manuel de vol F-HREJ, poids total 1050kg, 0° bank) : 55,6 kt (volets 0) · 52,4 kt (volets 1) · 50,2 kt (volets 2)</div>
   </fieldset>
@@ -507,9 +515,9 @@ function initShared(){
   const obstacleLocale = localStorage.getItem('outils2_obstacle_locale');
   if(obstacleEl && obstacleLocale !== null) obstacleEl.value = obstacleLocale;
 
-  [['shared_alt','outils2_terrain_locale'], ['shared_qfu','outils2_qfu_locale'],
+  [['shared_alt','outils2_terrain_locale'], ['shared_qfu','outils2_qfu_locale'], ['shared_bank','outils2_bank_locale'],
    ['shared_wdir','outils2_wdir_locale'], ['shared_wspd','outils2_wspd_locale'],
-   ['shared_wgust','outils2_wgust_locale']].forEach(([id, key]) => {
+   ['shared_wgust','outils2_wgust_locale'], ['shared_bank','outils2_bank_locale']].forEach(([id, key]) => {
     const el = document.getElementById(id), v = localStorage.getItem(key);
     if(el && v !== null) el.value = v;
   });
@@ -653,7 +661,7 @@ LINKS.concat([{src:'shared_masse',dst:'X_CEIL'},{src:'shared_wspd',dst:'T_VG'}])
 // Champs de l'onglet Partagé : mémorisation puis report
 [['shared_qnh','hrej_QNH'], ['shared_oat','hrej_OAT'], ['shared_masse','outils2_masse_locale'],
  ['shared_obstacle','outils2_obstacle_locale'], ['shared_alt','outils2_terrain_locale'],
- ['shared_qfu','outils2_qfu_locale'], ['shared_wdir','outils2_wdir_locale'],
+ ['shared_qfu','outils2_qfu_locale'], ['shared_bank','outils2_bank_locale'], ['shared_wdir','outils2_wdir_locale'],
  ['shared_wspd','outils2_wspd_locale'], ['shared_wgust','outils2_wgust_locale']].forEach(([id, key]) => {
   document.getElementById(id)?.addEventListener('input', function(){
     if(this.value !== ''){ try{ localStorage.setItem(key, this.value); }catch(e){} }
@@ -740,7 +748,7 @@ document.getElementById('R_OAT')?.addEventListener('input', function(){
 // Persistance générique : tous les champs de réglage sans logique de synchro dédiée
 // (évite d'écrire un bloc dédié pour chacun — se recharge automatiquement à chaque ouverture)
 const GENERIC_PERSIST_IDS = [
-  'V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','A_QNH','A_OAT','A_ALT','R_OAT','R_M','V_M',
+  'V_VIRAGE','V_SECUR','shared_bank','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','A_QNH','A_OAT','A_ALT','R_OAT','R_M','V_M',
   'T_QFU','T_XNM','T_VG','C_ZCOL','C_MARGE','C_DIST','C_CAP','C_VIAS','C_TALT','C_ZREF',
   'W_DIR','W_SPD','W_GUST','W_QFU','W_XLIM','W_VAPP'
 ];
@@ -986,7 +994,18 @@ function calcVitesses(){
   if(M > WMAX){
     alertesV.push({ level:'bad', text:`Masse ${Math.round(M)} kg supérieure à la masse maximale (${Math.round(WMAX)} kg).` });
   }
+  // Planchers anti-décrochage des trois situations réelles, à la masse et à la marge du jour.
+  // Seule la montée en virage dépend de l'inclinaison (facteur de charge).
+  const BANK = vv('shared_bank');
+  const cosB = Math.cos(BANK * Math.PI / 180);
+  const kSec = 1 + SECUR / 100;
+  const vsFinale  = Math.round(vs0map['2'] * Math.sqrt(M / WMAX) * kSec);
+  const vsMontee  = Math.round(vs0map['1'] * Math.sqrt(M / WMAX) * kSec);
+  const vsMonteeV = cosB > 0 ? Math.round(vs0map['1'] * Math.sqrt(M / WMAX) * Math.sqrt(1 / cosB) * kSec) : null;
+
   setFlight('p2', {
+    secur: SECUR, bank: BANK,
+    vsFinale, vsMontee, vsMonteeV,
     masse: Math.round(M),
     vs1: Math.round(vsAt('0')),
     vsVirage: VS_virage,
@@ -1648,7 +1667,7 @@ if(savedXChart){
 // pour ne jamais lire des chiffres issus d'anciennes données.
 const CALC_TABS = {
   p2: { fn:'calcVitesses', label:'Calculer les vitesses',
-        inputs:['V_M','V_WMAX','V_VIRAGE','V_SECUR','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','A_QNH','A_OAT','A_ALT','R_OAT','R_M','V_M','T_QFU'],
+        inputs:['V_M','V_WMAX','V_VIRAGE','V_SECUR','shared_bank','shared_bank','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','A_QNH','A_OAT','A_ALT','R_OAT','R_M','V_M','T_QFU'],
         radios:['V_VOLET'], outs:['p2_gauge','p2_out'], stale:'p2_stale' },
   p3: { fn:'calcTourPiste', label:'Calculer le tour de piste',
         inputs:['T_QFU','T_XNM','T_VG'], radios:['T_MD'],
@@ -2197,11 +2216,21 @@ function renderKeyBlock(){
   const box = document.getElementById('p0_key');
   if(!box) return;
   const v = FLIGHT.p2 || {}, w = FLIGHT.p4 || {}, r = FLIGHT.p5 || {}, a = FLIGHT.p6 || {}, c = FLIGHT.pc || {};
+  // La marge de sécurité figure dans les libellés : sans elle, un plancher à 73 kt
+  // serait incompréhensible. À 0 %, la mention disparaît.
+  const sfx = v.secur > 0 ? ` · +${v.secur} %` : '';
   const sv = isStale('p2') === true, sw = isStale('p4') === true,
         sr = isStale('p5') === true, sa = isStale('p6') === true, sc = isStale('pc') === true;
 
+  // Les planchers sont regroupés sous un titre explicite : le rouge signale le danger,
+  // le titre dit dans quel sens le lire.
+  const planchers = [
+    keyCell('Finale · volets 2' + sfx, v.vsFinale, ' kt', { color:'var(--bad)', alert:true, stale:sv }),
+    keyCell('Montée · volets 1' + sfx, v.vsMontee, ' kt', { color:'var(--bad)', alert:true, stale:sv }),
+    keyCell(`Montée · volets 1 · virage ${v.bank !== undefined ? v.bank : ''}°` + sfx, v.vsMonteeV, ' kt', { color:'var(--bad)', alert:true, stale:sv })
+  ].filter(Boolean);
+
   const cells = [
-    keyCell('Plancher anti-décrochage', v.vsVirage, ' kt', { color:'var(--bad)', alert:true, stale:sv }),
     keyCell('Vitesse d\'approche', w.vapp, ' kt', { color:'var(--accent-2)', stale:sw }),
     keyCell('Cap à tenir en finale', w.cap !== undefined ? w.cap : null, '°', { color:'var(--accent-2)', stale:sw }),
     keyCell('Meilleur taux (Vy)', w.vy, ' kt', { stale:sw }),
@@ -2215,13 +2244,18 @@ function renderKeyBlock(){
             { color: c.marge < 0 ? 'var(--bad)' : 'var(--ok)', alert: c.marge < 0, stale:sc }),
     keyCell('Marge obstacle', a.marge !== undefined ? a.marge : null, ' ft',
             { color: a.marge < 500 ? 'var(--bad)' : 'var(--ok)', alert: a.marge < 500, stale:sa }),
-    keyCell(r.pa !== undefined ? `ROC à ${r.pa} ft` : 'ROC', r.roc, ' ft/min',
-            { color: r.roc < 200 ? 'var(--bad)' : 'var(--val)', alert: r.roc < 200, stale:sr })
   ].filter(Boolean);
 
-  box.innerHTML = cells.length
-    ? `<div class="phase-head" style="border-left-color:var(--val)"><span>⭐ À retenir</span></div><div class="keygrid">${cells.join('')}</div>`
-    : `<div class="notes">Lancez les calculs pour voir apparaître les valeurs du jour.</div>`;
+  let out = '';
+  if(planchers.length){
+    out += `<div class="phase-head" style="border-left-color:var(--bad)"><span>🛑 Ne pas descendre en dessous de</span></div>`
+         + `<div class="keygrid">${planchers.join('')}</div>`;
+  }
+  if(cells.length){
+    out += `<div class="phase-head" style="border-left-color:var(--val)"><span>⭐ À retenir</span></div>`
+         + `<div class="keygrid">${cells.join('')}</div>`;
+  }
+  box.innerHTML = out || `<div class="notes">Lancez les calculs pour voir apparaître les valeurs du jour.</div>`;
 }
 
 // Le détail par phase est replié par défaut : le premier écran reste dédié à l'essentiel
