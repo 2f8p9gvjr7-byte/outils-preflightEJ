@@ -37,8 +37,8 @@ header{background:linear-gradient(180deg,#16264a 0%,#0f1d35 100%);padding:12px;t
 header .title{font-size:18px;color:var(--accent);font-weight:700;letter-spacing:1px}
 header .sub{font-size:11px;color:var(--text-dim);margin-top:3px;letter-spacing:0.5px}
 .tabs{display:flex;background:#0a1628;border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch}
-.tab{flex:0 0 auto;padding:12px 14px;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;color:var(--text-dim);white-space:nowrap;font-weight:600;letter-spacing:0.3px}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--bg-2)}
+.tab{flex:0 0 auto;padding:12px 14px;font-size:13px;cursor:pointer;border-bottom:4px solid transparent;color:#b9c4d8;white-space:nowrap;font-weight:600;letter-spacing:0.3px}
+.tab.active{color:#ffffff;border-bottom-color:var(--accent);background:var(--bg-2)}
 .page{display:none;padding:12px}
 .page.active{display:block}
 fieldset{border:1px solid var(--border);border-radius:10px;margin:0 0 12px;padding:10px 12px 8px;background:var(--bg-2);box-shadow:0 2px 6px rgba(0,0,0,0.2)}
@@ -53,6 +53,8 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 .row .ref{color:var(--accent-2);font-size:14px;text-align:right;width:85px;font-variant-numeric:tabular-nums;font-weight:600;padding-right:8px}
 .btn{margin:10px 0 6px;padding:13px;border-radius:8px;border:none;background:var(--accent);color:#0a1628;font-weight:700;font-size:14px;width:100%;cursor:pointer;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(217,128,138,0.3)}
 .btn:active{background:var(--accent-2);transform:translateY(1px)}
+.btn-compact{padding:9px;font-size:13px;margin:8px 0 4px;background:var(--bg-3);color:var(--accent-2);border:1px solid var(--accent);box-shadow:none}
+.btn-compact:active{background:var(--accent);color:#0a1628}
 .result{margin-top:10px;padding:12px;border-radius:8px;background:var(--bg-2);border:1px solid var(--border);font-size:13px;line-height:1.6}
 .result .big{font-size:24px;font-weight:700;display:block;margin:6px 0;font-variant-numeric:tabular-nums;letter-spacing:0.5px}
 .notes{font-size:11px;color:var(--text-dim);line-height:1.6;padding:10px 12px;background:rgba(10,22,40,0.5);border-radius:8px;border:1px dashed var(--border);margin-top:10px}
@@ -78,7 +80,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 .keygrid .kc.wide{grid-column:1 / -1}
 .keygrid .kc.stale{opacity:0.4}
 .keygrid .kc .old{display:inline-block;font-size:8.5px;font-weight:700;color:var(--bad);border:1px solid var(--bad);border-radius:20px;padding:0 5px;margin-left:5px;letter-spacing:0}
-.keygrid .kc .k{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;line-height:1.25;margin-bottom:3px}
+.keygrid .kc .k{font-size:10.5px;color:#d7dfec;text-transform:uppercase;letter-spacing:0.5px;line-height:1.25;margin-bottom:3px}
 .keygrid .kc .v{font-size:23px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
 .keygrid .kc .u{font-size:12px;font-weight:600;color:var(--text-dim);margin-left:2px}
 .detail-toggle{width:100%;margin:14px 0 2px;padding:11px;border-radius:8px;border:1px solid var(--border-2);background:#0a1628;color:var(--text-dim);font-size:13px;font-weight:700;letter-spacing:0.5px;cursor:pointer}
@@ -86,7 +88,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 .dash{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
 .dash .cell{background:#0a1628;border:1px solid var(--border-2);border-radius:8px;padding:7px 9px;min-width:0}
 .dash .cell.wide{grid-column:1 / -1}
-.dash .cell .k{font-size:9.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.4px;line-height:1.25;margin-bottom:2px}
+.dash .cell .k{font-size:10px;color:#d7dfec;text-transform:uppercase;letter-spacing:0.4px;line-height:1.25;margin-bottom:2px}
 .dash .cell .v{font-size:17px;font-weight:700;color:var(--val);font-variant-numeric:tabular-nums;line-height:1.2}
 .dash-stale{opacity:0.4}
 .runway-toggle{display:flex;gap:8px;margin:5px 0}
@@ -100,7 +102,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v31</span></div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v32</span></div>
 </header>
 
 <div class="tabs">
@@ -117,7 +119,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <!-- ONGLET 0 : Vol du jour — recapitulatif compact, alimente par les autres onglets -->
 <div id="p0" class="page active">
   <div id="p0_fresh"></div>
-  <button class="btn" onclick="recalcAll()">↻ Tout recalculer</button>
+  <button class="btn btn-compact" onclick="recalcAll()">↻ Recalculer tous les paramètres</button>
   <div id="p0_alerts"></div>
   <div id="p0_key"></div>
   <button class="detail-toggle" id="p0_toggle" onclick="toggleDetail()">▾ Détails par phase</button>
@@ -2007,6 +2009,17 @@ function calcVentTravers(){
   document.getElementById('p4_out').innerHTML = html;
 
   const alertesW = [];
+  // Le vent de cet onglet peut avoir été mis en valeur locale : deux vents différents
+  // seraient alors utilisés dans le même vol (majoration de finale d'un côté, cap et
+  // traversier de l'autre). On le signale explicitement.
+  const sW = { dir: vv('shared_wdir'), spd: vv('shared_wspd'), gust: vv('shared_wgust') };
+  const ecartVent = (sW.spd > 0 || SPD > 0) &&
+        (Math.round(sW.dir) !== Math.round(WDIR) || Math.round(sW.spd) !== Math.round(SPD) || Math.round(sW.gust) !== Math.round(GUST));
+  if(ecartVent){
+    const txt = `Vent local dans cet onglet (${String(Math.round(mod360(WDIR))).padStart(3,'0')}° / ${rkt(SPD)} kt${GUST > 0 ? ' raf. ' + rkt(GUST) : ''}) différent du vent du vol (${String(Math.round(mod360(sW.dir))).padStart(3,'0')}° / ${rkt(sW.spd)} kt${sW.gust > 0 ? ' raf. ' + rkt(sW.gust) : ''}) — les autres onglets calculent avec le vent du vol. Bouton ↺ pour revenir.`;
+    html += `<div class="banner-warn" style="text-align:left">⚠️ ${txt}</div>`;
+    alertesW.push({ level:'warn', text: txt });
+  }
   const xMaxG = Math.abs(xwG);
   if(XLIM > 0 && SPD > 0){
     if(xMaxG > XLIM) alertesW.push({ level:'bad', text:`🛑 Traversier ${rkt(xMaxG)} kt (rafales) supérieur à la limite ${rkt(XLIM)} kt.` });
@@ -2188,13 +2201,13 @@ function cell(k, v, opt){
   return `<div class="cell${opt.wide ? ' wide' : ''}"><div class="k">${k}</div><div class="v"${opt.color ? ` style="color:${opt.color}"` : ''}>${v}</div></div>`;
 }
 
-function dashCard(title, cells, key){
+function dashCard(title, cells, key, hue){
   const inner = cells.filter(Boolean).join('');
   if(!inner) return '';
   const st = key ? isStale(key) : false;
   const badge = st === null ? `<span class="badge" style="background:transparent;border-color:var(--border-2);color:var(--text-dim)">non calculé</span>`
               : st ? `<span class="badge">à recalculer</span>` : '';
-  return `<div class="phase-head"><span>${title}</span>${badge}</div><div class="dash${st ? ' dash-stale' : ''}">${inner}</div>`;
+  return `<div class="phase-head"${hue ? ` style="border-left-color:${hue}"` : ''}><span>${title}</span>${badge}</div><div class="dash${st ? ' dash-stale' : ''}">${inner}</div>`;
 }
 
 // Cellule du bloc « À retenir » : grand chiffre, unité discrète, cadre rouge si alerte
@@ -2320,7 +2333,7 @@ function renderDashboard(){
     cell('Plancher anti-décrochage', v.vsVirage ? v.vsVirage + ' kt' : null, { color:'var(--bad)' }),
     cell(`VS1 lisse${v.masse ? ' · ' + v.masse + ' kg' : ''}`, v.vs1 ? v.vs1 + ' kt' : null),
     cell('Piste', w.qfu !== undefined ? w.qfu + '°' : (t.qfu !== undefined ? t.qfu + '°' : null))
-  ], 'p2');
+  ], 'p2', '#67e8f9');
 
   // ── Montée ──
   html += dashCard('📈 Montée', [
@@ -2330,7 +2343,7 @@ function renderDashboard(){
     cell('Plafond corrigé', r.plafond !== undefined ? r.plafond + ' ft' : null),
     cell('Altitude vraie', a.zv !== undefined ? a.zv + ' ft' : null),
     cell('Marge obstacle', a.marge !== undefined ? a.marge + ' ft' : null, { color: a.marge < 500 ? 'var(--bad)' : 'var(--ok)' })
-  ], 'p5');
+  ], 'p5', '#4ade80');
 
   // ── Circuit ──
   html += dashCard('🔄 Tour de piste', [
@@ -2342,7 +2355,7 @@ function renderDashboard(){
     cell('Finale (cap)', t.capF !== undefined ? t.capF + '°' : null),
     cell('Temps vent arrière', t.tw || null),
     cell('Temps base', t.tb || null)
-  ], 'p3');
+  ], 'p3', '#fbbf24');
 
   // ── Finale ──
   html += dashCard('🛬 Finale', [
@@ -2353,7 +2366,7 @@ function renderDashboard(){
     cell('Dérive', w.derive !== undefined ? w.derive + '°' : null),
     cell('Vitesse sol', w.gs !== undefined ? w.gs + ' kt' : null),
     cell('Vent observé', w.vent || null, { wide: true })
-  ], 'p4');
+  ], 'p4', '#c4a5e8');
 
   out.innerHTML = html || `<div class="notes">Lancez les calculs dans les onglets pour voir apparaître le récapitulatif du vol.</div>`;
   renderKeyBlock();

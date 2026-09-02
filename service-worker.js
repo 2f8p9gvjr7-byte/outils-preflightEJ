@@ -1,5 +1,5 @@
 // Version du cache — incrémentée à chaque livraison
-const CACHE_NAME = 'dr400-calculs-divers-v31';
+const CACHE_NAME = 'dr400-calculs-divers-v32';
 const ASSETS = [
   './index.html',
   './manifest.json',
