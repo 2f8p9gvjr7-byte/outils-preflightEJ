@@ -102,7 +102,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v38</span></div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v39</span></div>
 </header>
 
 <div class="tabs">
@@ -357,6 +357,24 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 <!-- ONGLET 6 : Altitude pression / densité / vraie, méthode OACI exacte -->
 <div id="p6" class="page">
   <fieldset>
+    <legend>⛰️ Franchissement d'un col / obstacle</legend>
+    <div class="row"><label>Altitude de départ (terrain ou point de départ de la montée)</label><input id="C_ZDEP" type="number" step="10" value="0"><span class="unit">ft</span></div>
+    <div class="row"><label>Altitude réelle du col (carte)</label><input id="C_ZCOL" type="number" step="10" value="0"><span class="unit">ft</span></div>
+    <div class="row"><label>Marge minimale souhaitée</label><input id="C_MARGE" type="number" step="100" value="500"><span class="unit">ft</span></div>
+    <div class="row"><label>Distance jusqu'au col</label><input id="C_DIST" type="number" step="0.5" value="0"><span class="unit">NM</span></div>
+    <div class="row"><label>Cap vers le col</label><input id="C_CAP" type="number" step="1" value="0"><span class="unit">°</span></div>
+    <div class="row"><label>Vitesse indiquée de montée</label><input id="C_VIAS" type="number" step="1" value="86"><span class="unit">kt</span></div>
+    <div class="notes" style="margin-top:0">Température en altitude (prévision Windy ou TEMSI) — elle donne le gradient thermique réel, sans lequel le calcul retomberait sur l'atmosphère standard.</div>
+    <div class="row"><label>Température en altitude</label><input id="C_TALT" type="number" step="1" value="0"><span class="unit">°C</span></div>
+    <div class="row"><label>Altitude de cette température</label><input id="C_ZREF" type="number" step="100" value="0"><span class="unit">ft</span></div>
+    <div class="notes" style="margin-top:0">QNH, température terrain, masse et vent proviennent de l'onglet <b>Partagé</b>. L'altitude de départ suit l'altitude terrain, modifiable si la montée commence ailleurs.</div>
+  </fieldset>
+
+  <button class="btn" onclick="calcFranchissement()">Calculer le franchissement</button>
+  <div id="C_stale"></div>
+  <div id="C_out" class="result"></div>
+
+  <fieldset style="margin-top:16px">
     <legend>🎚️ Type de saisie</legend>
     <div class="runway-toggle" style="margin:0">
       <label><input type="radio" name="A_MODE" value="QNH" checked><span>Altitude (QNH)</span></label>
@@ -382,23 +400,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <div id="p6_bar"></div>
   <div id="p6_out" class="result"></div>
 
-  <fieldset style="margin-top:16px">
-    <legend>⛰️ Franchissement d'un col / obstacle</legend>
-    <div class="row"><label>Altitude de départ (terrain ou point de départ de la montée)</label><input id="C_ZDEP" type="number" step="10" value="0"><span class="unit">ft</span></div>
-    <div class="row"><label>Altitude réelle du col (carte)</label><input id="C_ZCOL" type="number" step="10" value="0"><span class="unit">ft</span></div>
-    <div class="row"><label>Marge minimale souhaitée</label><input id="C_MARGE" type="number" step="100" value="500"><span class="unit">ft</span></div>
-    <div class="row"><label>Distance jusqu'au col</label><input id="C_DIST" type="number" step="0.5" value="0"><span class="unit">NM</span></div>
-    <div class="row"><label>Cap vers le col</label><input id="C_CAP" type="number" step="1" value="0"><span class="unit">°</span></div>
-    <div class="row"><label>Vitesse indiquée de montée</label><input id="C_VIAS" type="number" step="1" value="86"><span class="unit">kt</span></div>
-    <div class="notes" style="margin-top:0">Température en altitude (prévision Windy ou TEMSI) — elle donne le gradient thermique réel, sans lequel le calcul retomberait sur l'atmosphère standard.</div>
-    <div class="row"><label>Température en altitude</label><input id="C_TALT" type="number" step="1" value="0"><span class="unit">°C</span></div>
-    <div class="row"><label>Altitude de cette température</label><input id="C_ZREF" type="number" step="100" value="0"><span class="unit">ft</span></div>
-    <div class="notes" style="margin-top:0">QNH, température terrain, masse et vent proviennent de l'onglet <b>Partagé</b>. L'altitude de départ suit l'altitude terrain, modifiable si la montée commence ailleurs.</div>
-  </fieldset>
 
-  <button class="btn" onclick="calcFranchissement()">Calculer le franchissement</button>
-  <div id="C_stale"></div>
-  <div id="C_out" class="result"></div>
 </div>
 
 <!-- ONGLET 5 : ROC / Plafond selon POH DR400/160 (édition n°1, 10-5-1972) -->
@@ -2254,6 +2256,18 @@ function calcFranchissement(){
   html += `<div class="notes" style="margin-top:8px">Le <b>Vz moyen</b> est celui qui sert au calcul du gain : il porte sur toute la montée, il est donc supérieur au Vz au col. Pour retrouver la valeur de l'onglet <b>ROC densité</b>, comparez à altitude-pression égale.<br>L'altitude atteinte est convertie en <b>altitude vraie</b> avant comparaison avec le relief : c'est la seule comparaison valable, l'altimètre surestimant l'altitude réelle par temps froid.<br>⚠️ Calcul en air calme et pleine puissance : près d'un relief, les <b>rabattants</b> peuvent annuler ce taux de montée. Prévoyez toujours un demi-tour possible.</div>`;
 
   out.innerHTML = html;
+  // L'altitude à viser alimente directement le champ d'altitude ci-dessous : le pilote
+  // n'a rien à recopier. Sa propre saisie reste prioritaire (bordure orange + ↺).
+  const aalt = document.getElementById('A_ALT');
+  if(aalt && !isOverridden('A_ALT') && ziCible > 0 && String(ziCible) !== aalt.value){
+    aalt.value = ziCible;
+    try{
+      localStorage.setItem('outils2_field_A_ALT', aalt.value);
+      localStorage.setItem('outils2_terrain_seed', aalt.value);
+    }catch(e){}
+    if(typeof refreshStale === 'function') refreshStale('p6');
+  }
+
   setFlight('pc', {
     ziCible, vMin, vMax,
     margeDem: Math.round(MARGE),
@@ -2276,11 +2290,11 @@ function updateAltSuggestion(){
   const perime = isStale('pc') === true;
   if(!z || perime){ box.innerHTML = ''; return; }
   if(Math.round(+el.value) === Math.round(z)){
-    box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">✅ Altitude conforme au franchissement calculé (${z} ft)</div>`;
+    box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🎯 Altitude issue du calcul de franchissement ci-dessus (${z} ft)</div>`;
     return;
   }
-  box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🎯 Franchissement du col : <b>${z} ft</b> à viser au QNH</div>`
-    + `<button type="button" class="btn-mini" style="width:100%;margin:0 0 4px" onclick="appliquerAltSuggestion()">↑ Utiliser ${z} ft</button>`;
+  box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🎯 Le franchissement du col demande <b>${z} ft</b> — votre saisie diffère.</div>`
+    + `<button type="button" class="btn-mini" style="width:100%;margin:0 0 4px" onclick="appliquerAltSuggestion()">↑ Revenir à ${z} ft</button>`;
 }
 
 function appliquerAltSuggestion(){
@@ -2508,7 +2522,7 @@ function renderDashboard(){
 function recalcAll(){
   // Ordre imposé par les dépendances : le vent alimente la majoration de finale (Vitesses),
   // et les Altitudes alimentent l'altitude-pression du ROC.
-  [['p4','calcVentTravers'],['p2','calcVitesses'],['p3','calcTourPiste'],['p6','calcAltitudes'],['p5','calcROCDensite'],['pc','calcFranchissement']]
+  [['p4','calcVentTravers'],['p2','calcVitesses'],['p3','calcTourPiste'],['pc','calcFranchissement'],['p6','calcAltitudes'],['p5','calcROCDensite']]
     .forEach(([k, fn]) => { try{ if(typeof window[fn] === 'function') window[fn](); }catch(e){} });
   renderDashboard();
 }
