@@ -102,7 +102,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v32</span></div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v38</span></div>
 </header>
 
 <div class="tabs">
@@ -367,6 +367,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
   <fieldset>
     <legend>📥 Données</legend>
     <div class="row" id="A_ROW_ALT"><label>Altitude indiquée (QNH réglé)</label><input id="A_ALT" type="number" step="10" value="2300"><span class="unit">ft</span></div>
+    <div id="A_SUGG"></div>
     <div class="row" id="A_ROW_FL" style="display:none"><label>Niveau de vol (FL)</label><input id="A_FL" type="number" step="1" value="65"><span class="unit">FL</span></div>
     <div class="row"><label>QNH</label><input id="A_QNH" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
     <div class="row"><label>OAT à cette altitude</label><input id="A_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
@@ -1290,6 +1291,7 @@ function calcAltitudes(){
     rpaEl.value = PA.toFixed(0);
     try{ localStorage.setItem('outils2_rpa_locale', rpaEl.value); }catch(e){}
   }
+  if(typeof updateAltSuggestion === 'function') updateAltSuggestion();
 
   const alertesA = [];
   if(hasObstacle){
@@ -1681,7 +1683,7 @@ const CALC_TABS = {
         inputs:['R_M','R_PA','R_OAT'], radios:[],
         outs:['p5_out'], stale:'p5_stale' },
   pc: { fn:'calcFranchissement', label:'Calculer le franchissement',
-        inputs:['C_ZDEP','C_ZCOL','C_MARGE','C_DIST','C_CAP','C_VIAS','C_TALT','C_ZREF','A_QNH','shared_oat','shared_alt','shared_masse','shared_wdir','shared_wspd'],
+        inputs:['C_ZDEP','C_ZCOL','C_MARGE','C_DIST','C_CAP','C_VIAS','C_TALT','C_ZREF','A_QNH','shared_oat','shared_alt','shared_masse','shared_wdir','shared_wspd','X_VX','X_VY'],
         radios:[], outs:['C_out'], stale:'C_stale' },
   p4: { fn:'calcVentTravers', label:'Calculer le vent de travers',
         inputs:['W_DIR','W_SPD','W_GUST','W_QFU','W_XLIM','W_VAPP'], radios:[],
@@ -2048,6 +2050,22 @@ function calcVentTravers(){
   if(typeof renderDashboard === 'function') renderDashboard();
 }
 
+// Part du taux de montée conservée à la vitesse V, rapportée au maximum obtenu à Vy.
+// Réutilise le modèle Vx/Vy de l'onglet 8, recalé sur les vitesses du manuel : monter
+// plus vite que Vy dégrade le taux, monter à Vx le dégrade aussi (meilleure pente, pas
+// meilleur taux). Sans ce facteur, changer de vitesse n'aurait aucun effet sur le Vz.
+function climbRatio(V){
+  const VX0 = vv('X_VX'), VY0 = vv('X_VY');
+  if(!(VX0 > 0 && VY0 > VX0) || !(V > 0)) return 1;
+  const m = xy_model(VX0, VY0);
+  const u = m.ktInv(V), uy = m.ktInv(VY0);
+  if(!isFinite(u) || u <= 0) return 0;
+  const ex = uu => { const e = m.evalU(uu); return e.t * uu - e.d * uu; };   // excédent de puissance
+  const max = ex(uy);
+  if(max <= 0) return 0;
+  return Math.max(0, Math.min(1, ex(u) / max));
+}
+
 // ── Franchissement d'un col / obstacle ──
 // Méthode reprise à l'identique de l'application de prévol (formule HP-19), à une
 // correction près : l'altitude atteinte est convertie en altitude VRAIE avant d'être
@@ -2108,11 +2126,12 @@ function calcFranchissement(){
   }
 
   // Taux de montée POH aux trois altitudes, corrigés de l'écart ISA réel
-  const vzA = z => {
+  const vzBase = z => {
     const pa = paDe(z);
     const ms = poh_roc_sl(M) - poh_reduction(M) * (pa / 1000) - 0.22 * ((tempA(z) - isaA(pa)) / 10);
     return ms * MS_TO_FPM;
   };
+  const vzA = z => vzBase(z) * climbRatio(VIAS);
   const vzDep = vzA(ZDEP), vzMid = vzA(zMid), vzCol = vzA(ZCOL);
   const vzMoy = (vzDep + 4 * vzMid + vzCol) / 6;            // intégration de Simpson
 
@@ -2124,6 +2143,50 @@ function calcFranchissement(){
   const paAtt = paDe(ziAtteinte);
   const zvAtteinte = ziAtteinte * ((tempA(ziAtteinte) + 273.15) / (isaA(paAtt) + 273.15));
   const marge = zvAtteinte - (ZCOL + MARGE);
+
+  // ── Altitude à AFFICHER pour être réellement au-dessus du col + marge ──
+  // On inverse la conversion altitude affichée → altitude vraie (dichotomie, la relation
+  // n'étant pas linéaire), puis on arrondit à la centaine supérieure.
+  const cible = ZCOL + MARGE;
+  const zvDe = zi => zi * ((tempA(zi) + 273.15) / (isaA(paDe(zi)) + 273.15));
+  let lo = 0, hi = 30000;
+  for(let i = 0; i < 60; i++){
+    const mid = (lo + hi) / 2;
+    if(zvDe(mid) < cible) lo = mid; else hi = mid;
+  }
+  const ziCible = Math.ceil(hi / 100) * 100;
+
+  // Distance nécessaire pour atteindre cette altitude à la vitesse choisie
+  const gainCible = ziCible - ZDEP;
+  const vzVersCible = (vzBase(ZDEP) * climbRatio(VIAS) + 4 * vzBase((ZDEP + ziCible) / 2) * climbRatio(VIAS) + vzBase(ziCible) * climbRatio(VIAS)) / 6;
+  const distCible = vzVersCible > 0 ? (gainCible / vzVersCible) * GS / 60 : null;
+
+  // ── Quelles vitesses de montée permettent de passer ? ──
+  // On balaie de Vx à Vy+20 kt : le taux varie avec la vitesse, la vitesse sol aussi.
+  const VXm = vv('X_VX') || 70, VYm = vv('X_VY') || 86;
+  // Le balayage n'a de sens que si Vx et Vy sont cohérentes (Vy > Vx). Sinon l'intervalle
+  // serait vide et l'absence d'essai serait prise à tort pour un échec.
+  const vitessesOK = VXm > 0 && VYm > VXm;
+  const essais = [];
+  for(let V = Math.round(VXm); vitessesOK && V <= Math.round(VYm) + 20; V++){
+    const r = climbRatio(V);
+    if(r <= 0) continue;
+    const tasV = V * (1 + 0.02 * daMid / 1000);
+    let gsV = tasV;
+    if(WSPD > 0){
+      const wta = mod360(WDIR - CAP) * Math.PI / 180;
+      const rap = Math.min(1, Math.abs(WSPD * Math.sin(wta)) / tasV);
+      gsV = tasV * Math.sqrt(1 - rap * rap) - WSPD * Math.cos(wta);
+    }
+    if(gsV <= 0) continue;
+    const vzV = (vzBase(ZDEP) + 4 * vzBase(zMid) + vzBase(ZCOL)) / 6 * r;
+    const ziV = ZDEP + vzV * (DIST / gsV * 60);
+    essais.push({ V, marge: zvDe(ziV) - cible, vz: vzV });
+  }
+  const passent = essais.filter(e => e.marge >= 0);
+  const vMin = passent.length ? Math.min(...passent.map(e => e.V)) : null;
+  const vMax = passent.length ? Math.max(...passent.map(e => e.V)) : null;
+  const meilleur = essais.length ? essais.reduce((a, b) => b.marge > a.marge ? b : a) : null;
 
   let html = '';
   const alerts = [];
@@ -2146,6 +2209,33 @@ function calcFranchissement(){
   html += `<div class="kvline"><span class="k">Col + marge de ${Math.round(MARGE)} ft</span><span class="v">${Math.round(ZCOL + MARGE)} ft</span></div>`;
   html += `<div class="kvline"><span class="k">Marge finale</span><span class="v" style="color:${marge < 0 ? 'var(--bad)' : 'var(--ok)'}">${marge >= 0 ? '+' : ''}${Math.round(marge)} ft</span></div>`;
 
+  html += `<div class="section-title">🎯 Altitude à afficher</div>`;
+  html += `<div class="kvline"><span class="k">À viser au QNH (arrondi au 100 ft supérieur)</span><span class="v" style="color:var(--accent-2);font-size:17px">${ziCible} ft</span></div>`;
+  html += `<div class="kvline"><span class="k">Soit en altitude vraie</span><span class="v">${Math.round(zvDe(ziCible))} ft — col ${Math.round(ZCOL)} + marge ${Math.round(MARGE)}</span></div>`;
+  if(distCible !== null){
+    const reste = DIST - distCible;
+    html += `<div class="kvline"><span class="k">Distance pour l'atteindre à ${rkt(VIAS)} kt</span><span class="v" style="color:${reste >= 0 ? 'var(--ok)' : 'var(--bad)'}">${distCible.toFixed(1)} NM ${reste >= 0 ? `(${reste.toFixed(1)} NM d'avance)` : `(${Math.abs(reste).toFixed(1)} NM de trop)`}</span></div>`;
+  }
+
+  html += `<div class="section-title">⚙️ Vitesse de montée</div>`;
+  if(!vitessesOK){
+    html += `<div class="banner-warn">⚠️ Plage de vitesses non calculée : dans l'onglet <b>Vx/Vy</b>, Vy (${rkt(VYm)} kt) doit être supérieure à Vx (${rkt(VXm)} kt). Corrigez-les pour obtenir la vitesse de montée conseillée.</div>`;
+  } else if(!passent.length){
+    html += `<div class="banner-bad">🛑 Aucune vitesse entre ${Math.round(VXm)} et ${Math.round(VYm) + 20} kt ne permet de passer sur ${DIST} NM.${meilleur ? ` Le moins mauvais est ${meilleur.V} kt (${Math.round(meilleur.marge)} ft).` : ''} Il faut monter avant, allonger le trajet, ou renoncer.</div>`;
+    alerts.push({ level:'bad', text:`Col : aucune vitesse de montée ne permet de passer sur ${DIST} NM.` });
+  } else {
+    html += `<div class="kvline"><span class="k">Vitesse la plus lente qui passe</span><span class="v">${vMin} kt</span></div>`;
+    html += `<div class="kvline"><span class="k">Vitesse la plus rapide qui passe</span><span class="v">${vMax} kt</span></div>`;
+    if(meilleur) html += `<div class="kvline"><span class="k">Marge maximale (à ${meilleur.V} kt)</span><span class="v">+${Math.round(meilleur.marge)} ft</span></div>`;
+    if(VIAS > vMax){
+      html += `<div class="banner-warn">⚠️ À ${rkt(VIAS)} kt vous ne passez pas : ralentissez vers <b>${meilleur ? meilleur.V : vMin} kt</b>, la pente y est meilleure.</div>`;
+    } else if(VIAS < vMin){
+      html += `<div class="banner-warn">⚠️ Trop lent : à cette vitesse le taux chute. Visez plutôt <b>${meilleur ? meilleur.V : vMin} kt</b>.</div>`;
+    } else if(vMax > VIAS + 4 && marge >= 300){
+      html += `<div class="notes" style="margin-top:6px">Vous passez confortablement : vous pourriez monter jusqu'à <b>${vMax} kt</b> et conserver la marge — meilleure visibilité et refroidissement moteur.</div>`;
+    }
+  }
+
   html += `<div class="section-title">Détail de la montée</div>`;
   html += `<div class="kvline"><span class="k">Gradient thermique retenu</span><span class="v">${grad.toFixed(2)} °C / 1000 ft${gradOK ? '' : ' (standard)'}</span></div>`;
   html += `<div class="kvline"><span class="k">Altitude densité moyenne</span><span class="v">${Math.round(daMid)} ft</span></div>`;
@@ -2165,11 +2255,43 @@ function calcFranchissement(){
 
   out.innerHTML = html;
   setFlight('pc', {
+    ziCible, vMin, vMax,
+    margeDem: Math.round(MARGE),
     zi: Math.round(ziAtteinte), zv: Math.round(zvAtteinte),
     marge: Math.round(marge), pente: Math.round(vzMoy / GS * 60),
     vz: Math.round(vzMoy), temps: tMin.toFixed(1), alerts
   });
+  if(typeof updateAltSuggestion === 'function') updateAltSuggestion();
   if(typeof renderDashboard === 'function') renderDashboard();
+}
+
+// Suggestion d'altitude issue du calcul de franchissement : proposée sous le champ,
+// le pilote l'applique d'un geste ou saisit la sienne. L'altitude à viser ne dépend pas
+// de l'altitude saisie ici, il n'y a donc aucune circularité.
+function updateAltSuggestion(){
+  const box = document.getElementById('A_SUGG');
+  const el = document.getElementById('A_ALT');
+  if(!box || !el) return;
+  const z = (FLIGHT.pc || {}).ziCible;
+  const perime = isStale('pc') === true;
+  if(!z || perime){ box.innerHTML = ''; return; }
+  if(Math.round(+el.value) === Math.round(z)){
+    box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">✅ Altitude conforme au franchissement calculé (${z} ft)</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🎯 Franchissement du col : <b>${z} ft</b> à viser au QNH</div>`
+    + `<button type="button" class="btn-mini" style="width:100%;margin:0 0 4px" onclick="appliquerAltSuggestion()">↑ Utiliser ${z} ft</button>`;
+}
+
+function appliquerAltSuggestion(){
+  const z = (FLIGHT.pc || {}).ziCible;
+  const el = document.getElementById('A_ALT');
+  if(!z || !el) return;
+  el.value = z;
+  setOverridden('A_ALT', true);                 // valeur choisie : le terrain ne l'écrase plus
+  try{ localStorage.setItem('outils2_field_A_ALT', el.value); }catch(e){}
+  calcAltitudes();
+  updateAltSuggestion();
 }
 
 // ── Tableau de bord « Vol du jour » ──
@@ -2253,9 +2375,11 @@ function renderKeyBlock(){
             { color:'var(--bad)', alert:true, stale:sw }),
     keyCell('Traversier (vent)', w.trav, ' kt' + (w.trav > 0 && w.travCote ? ' ' + w.travCote : ''),
             { color: w.travDepasse ? 'var(--bad)' : 'var(--val)', alert: w.travDepasse, stale:sw }),
-    keyCell('Marge au col', c.marge !== undefined ? c.marge : null, ' ft',
+    keyCell('Altitude à afficher au QNH', c.ziCible, ' ft', { color:'var(--accent-2)', stale:sc }),
+    keyCell('Temps de montée jusqu\'au col', c.temps, ' min', { stale:sc }),
+    keyCell(c.margeDem > 0 ? `Marge au col (marge ${c.margeDem} ft déduite)` : 'Marge au col', c.marge !== undefined ? c.marge : null, ' ft',
             { color: c.marge < 0 ? 'var(--bad)' : 'var(--ok)', alert: c.marge < 0, stale:sc }),
-    keyCell('Marge obstacle', a.marge !== undefined ? a.marge : null, ' ft',
+    keyCell('Marge obstacle (sans marge déduite)', a.marge !== undefined ? a.marge : null, ' ft',
             { color: a.marge < 500 ? 'var(--bad)' : 'var(--ok)', alert: a.marge < 500, stale:sa }),
   ].filter(Boolean);
 
@@ -2342,7 +2466,7 @@ function renderDashboard(){
     cell(r.pa !== undefined ? `ROC à ${r.pa} ft` : 'ROC estimé', r.roc !== undefined ? r.roc + ' ft/min' : null),
     cell('Plafond corrigé', r.plafond !== undefined ? r.plafond + ' ft' : null),
     cell('Altitude vraie', a.zv !== undefined ? a.zv + ' ft' : null),
-    cell('Marge obstacle', a.marge !== undefined ? a.marge + ' ft' : null, { color: a.marge < 500 ? 'var(--bad)' : 'var(--ok)' })
+    cell('Marge obstacle (sans marge déduite)', a.marge !== undefined ? a.marge + ' ft' : null, { color: a.marge < 500 ? 'var(--bad)' : 'var(--ok)' })
   ], 'p5', '#4ade80');
 
   // ── Circuit ──
@@ -2407,6 +2531,7 @@ updateVappAuto();
 Object.keys(CALC_TABS).forEach(restoreCalc);
 refreshAllStale();
 renderDashboard();
+updateAltSuggestion();
 
 // ── Mise à jour de l'application ──
 // updateViaCache 'none' empêche le navigateur de servir un ancien service-worker.js
