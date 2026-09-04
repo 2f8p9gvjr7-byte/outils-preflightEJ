@@ -79,6 +79,13 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 .keygrid .kc.alert{border-color:var(--bad);background:var(--bad-bg)}
 .keygrid .kc.wide{grid-column:1 / -1}
 .keygrid .kc.stale{opacity:0.4}
+.trigrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.trigrid .tc{background:var(--bad-bg);border:1px solid var(--bad);border-radius:10px;padding:8px 6px;text-align:center;min-width:0}
+.trigrid .tc.stale{opacity:0.4;background:var(--bg-3);border-color:var(--border-2)}
+.trigrid .tc .k{font-size:9.5px;color:#d7dfec;text-transform:uppercase;letter-spacing:0.3px;line-height:1.25;min-height:24px}
+.trigrid .tc .v{font-size:26px;font-weight:700;color:var(--bad);line-height:1.15;font-variant-numeric:tabular-nums}
+.trigrid .tc .v .u{font-size:12px;font-weight:600;color:var(--text-dim);margin-left:1px}
+.trigrid .tc .s{font-size:9.5px;color:var(--text-dim);margin-top:1px}
 .keygrid .kc .old{display:inline-block;font-size:8.5px;font-weight:700;color:var(--bad);border:1px solid var(--bad);border-radius:20px;padding:0 5px;margin-left:5px;letter-spacing:0}
 .keygrid .kc .k{font-size:10.5px;color:#d7dfec;text-transform:uppercase;letter-spacing:0.5px;line-height:1.25;margin-bottom:3px}
 .keygrid .kc .v{font-size:23px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
@@ -102,7 +109,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v39</span></div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v40</span></div>
 </header>
 
 <div class="tabs">
@@ -2359,6 +2366,17 @@ function keyCell(k, val, unit, opt){
   </div>`;
 }
 
+// Plancher en colonne : libellé court, grand chiffre, marge en dessous.
+// Disposition à trois colonnes : les trois situations tiennent sur une seule ligne.
+function triCell(k, val, sous, stale){
+  if(val === undefined || val === null || val === '') return '';
+  return `<div class="tc${stale ? ' stale' : ''}">
+    <div class="k">${k}</div>
+    <div class="v">${val}<span class="u">kt</span></div>
+    <div class="s">${stale ? 'à recalculer' : (sous || '')}</div>
+  </div>`;
+}
+
 // Niveau 1 : uniquement ce qui change avec les conditions du jour.
 // Les consignes club invariables (55, 70, 80 kt) restent au niveau 2.
 function renderKeyBlock(){
@@ -2373,10 +2391,11 @@ function renderKeyBlock(){
 
   // Les planchers sont regroupés sous un titre explicite : le rouge signale le danger,
   // le titre dit dans quel sens le lire.
+  const marge = v.secur > 0 ? `+${v.secur} %` : '';
   const planchers = [
-    keyCell('Finale · volets 2' + sfx, v.vsFinale, ' kt', { color:'var(--bad)', alert:true, stale:sv }),
-    keyCell('Montée · volets 1' + sfx, v.vsMontee, ' kt', { color:'var(--bad)', alert:true, stale:sv }),
-    keyCell(`Montée · volets 1 · virage ${v.bank !== undefined ? v.bank : ''}°` + sfx, v.vsMonteeV, ' kt', { color:'var(--bad)', alert:true, stale:sv })
+    triCell('Finale<br>volets 2', v.vsFinale, marge, sv),
+    triCell('Montée<br>volets 1', v.vsMontee, marge, sv),
+    triCell(`Montée · volets 1<br>virage ${v.bank !== undefined ? v.bank : ''}°`, v.vsMonteeV, marge, sv)
   ].filter(Boolean);
 
   const cells = [
@@ -2400,7 +2419,7 @@ function renderKeyBlock(){
   let out = '';
   if(planchers.length){
     out += `<div class="phase-head" style="border-left-color:var(--bad)"><span>🛑 Ne pas descendre en dessous de</span></div>`
-         + `<div class="keygrid">${planchers.join('')}</div>`;
+         + `<div class="trigrid">${planchers.join('')}</div>`;
   }
   if(cells.length){
     out += `<div class="phase-head" style="border-left-color:var(--val)"><span>⭐ À retenir</span></div>`
