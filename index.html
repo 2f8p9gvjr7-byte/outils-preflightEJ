@@ -109,7 +109,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
 
 <header>
   <div class="title">DR400/160 - CALCULS DIVERS</div>
-  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v40</span></div>
+  <div class="sub">Outils complémentaires DR400/160 · <span id="app_version">v43</span></div>
 </header>
 
 <div class="tabs">
@@ -396,6 +396,7 @@ legend{padding:0 8px;color:var(--accent);font-size:13px;font-weight:700;letter-s
     <div class="row" id="A_ROW_FL" style="display:none"><label>Niveau de vol (FL)</label><input id="A_FL" type="number" step="1" value="65"><span class="unit">FL</span></div>
     <div class="row"><label>QNH</label><input id="A_QNH" type="number" step="1" value="1013"><span class="unit">hPa</span></div>
     <div class="row"><label>OAT à cette altitude</label><input id="A_OAT" type="number" step="1" value="15"><span class="unit">°C</span></div>
+    <div id="A_OAT_NOTE"></div>
     <div class="notes" style="margin-top:0">
       En niveau de vol, le QNH sert uniquement à retrouver l'altitude indiquée équivalente (Zi) — l'altitude pression, elle, ne dépend que du FL.<br>
       Méthode OACI exacte (ratio Kelvin) : PA=Zi+(1013−QNH)×27 · T_ISA=15−1,98×(PA/1000) · Zv=Zi×((OAT+273,15)/(T_ISA+273,15)) · DA=PA+120×(OAT−T_ISA).
@@ -562,9 +563,7 @@ function initShared(){
 // champ la ramène à la valeur du vol.
 const LINKS = [
   { src:'shared_qnh',   dst:'A_QNH'  },
-  { src:'shared_oat',   dst:'A_OAT'  },
   { src:'A_OAT',        dst:'R_OAT'  },   // l'OAT du ROC est celle de l'altitude considérée
-  { src:'shared_alt',   dst:'A_ALT'  },
   { src:'shared_alt',   dst:'C_ZDEP' },
   { src:'shared_masse', dst:'V_M'    },
   { src:'shared_masse', dst:'R_M'    },
@@ -601,8 +600,45 @@ function applyLinksFrom(srcId){
   return changed;
 }
 
+// Gradient thermique du jour : déduit de la température terrain et de celle en altitude
+// (prévision). À défaut de seconde température, on retombe sur le gradient standard.
+function gradientJour(){
+  const tSol = vv('shared_oat'), zSol = vv('shared_alt');
+  const tAlt = vv('C_TALT'), zRef = vv('C_ZREF');
+  if(zRef > zSol && (tAlt !== 0 || tSol !== 0)) return (tSol - tAlt) / ((zRef - zSol) / 1000);
+  return 1.98;
+}
+
 // Valeurs déduites : plafond POH (masse) et vitesse sol en vent arrière (vent + QFU)
 function syncDerived(){
+  // Altitude analysée : celle que demande le franchissement si un col est calculé,
+  // sinon l'altitude terrain. Une saisie du pilote reste toujours prioritaire.
+  const aalt = document.getElementById('A_ALT');
+  if(aalt && !isOverridden('A_ALT')){
+    // On ne teste PAS la péremption ici : au moment où le franchissement appelle cette
+    // fonction, son résultat n'est pas encore enregistré, il serait vu comme périmé et
+    // l'altitude retomberait à tort sur celle du terrain.
+    const zc = (typeof FLIGHT !== 'undefined' && FLIGHT.pc) ? FLIGHT.pc.ziCible : null;
+    const cible = zc > 0 ? zc : vv('shared_alt');
+    if(cible > 0 && String(cible) !== aalt.value){
+      aalt.value = cible;
+      try{ localStorage.setItem('outils2_field_A_ALT', aalt.value); }catch(e){}
+    }
+  }
+  // Température à cette altitude : déduite du gradient du jour, plus de double saisie.
+  const aoat = document.getElementById('A_OAT');
+  if(aoat && !isOverridden('A_OAT')){
+    const zSol = vv('shared_alt'), tSol = vv('shared_oat'), z = vv('A_ALT');
+    if(z > 0){
+      const t = Math.round((tSol - gradientJour() * (z - zSol) / 1000) * 10) / 10;
+      if(String(t) !== aoat.value){
+        aoat.value = t;
+        try{ localStorage.setItem('outils2_aoat_locale', aoat.value); }catch(e){}
+        applyLinksFrom('A_OAT');
+      }
+    }
+  }
+  updateOatNote();
   const m = +(document.getElementById('shared_masse')?.value || 0);
   const xc = document.getElementById('X_CEIL');
   if(xc && !isOverridden('X_CEIL') && m > 0){
@@ -626,6 +662,18 @@ function syncDerived(){
       vg.value = v;
       try{ localStorage.setItem('outils2_field_T_VG', v); }catch(e){}
     }
+  }
+}
+
+// Explique d'où vient la température affichée dans l'onglet Altitudes
+function updateOatNote(){
+  const box = document.getElementById('A_OAT_NOTE');
+  if(!box) return;
+  const z = vv('A_ALT'), g = gradientJour();
+  if(isOverridden('A_OAT')){
+    box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">✏️ Température saisie à la main — le calcul automatique donnerait ${Math.round((vv('shared_oat') - g * (z - vv('shared_alt')) / 1000) * 10) / 10} °C à ${Math.round(z)} ft.</div>`;
+  } else {
+    box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🌡️ Déduite du gradient du jour (${g.toFixed(2)} °C/1000 ft) à ${Math.round(z)} ft — plus besoin de la ressaisir.</div>`;
   }
 }
 
@@ -656,7 +704,7 @@ function updateOvrBadge(id){
 }
 
 // Un champ relié devient local dès qu'on le modifie sur place
-LINKS.concat([{src:'shared_masse',dst:'X_CEIL'},{src:'shared_wspd',dst:'T_VG'}]).forEach(l => {
+LINKS.concat([{src:'shared_masse',dst:'X_CEIL'},{src:'shared_wspd',dst:'T_VG'},{src:'shared_alt',dst:'A_ALT'},{src:'shared_oat',dst:'A_OAT'}]).forEach(l => {
   const dst = document.getElementById(l.dst);
   if(!dst || dst.dataset.linked) return;
   dst.dataset.linked = '1';
@@ -808,6 +856,13 @@ function updateVentInfo(){
   box.innerHTML = `<div class="notes" style="margin:6px 0 2px;border-style:solid">🌬️ Piste ${Math.round(mod360(c.qfu))}° — <b>${face}</b> · traversier <b>${rkt(c.trav)} kt ${c.trav >= 0 ? 'droite' : 'gauche'}</b></div>`;
 }
 document.getElementById('T_QFU')?.addEventListener('input', updateVentInfo);
+// Le gradient dépend de ces deux champs : la température déduite se met à jour en direct
+['C_TALT','C_ZREF','C_ZCOL'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', () => {
+    if(typeof syncDerived === 'function') syncDerived();
+    if(typeof refreshAllStale === 'function') refreshAllStale();
+  });
+});
 
 function buildASIGauge(VS1, VS0, VFE, VNO, VNE, VA){
   const cx=150, cy=150, R=128, bandW=18;
@@ -1680,13 +1735,13 @@ if(savedXChart){
 // pour ne jamais lire des chiffres issus d'anciennes données.
 const CALC_TABS = {
   p2: { fn:'calcVitesses', label:'Calculer les vitesses',
-        inputs:['V_M','V_WMAX','V_VIRAGE','V_SECUR','shared_bank','shared_bank','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','A_QNH','A_OAT','A_ALT','R_OAT','R_M','V_M','T_QFU'],
+        inputs:['V_M','V_WMAX','V_VIRAGE','V_SECUR','shared_bank','V_KMAX','V_KTRANS','V_VFE','V_VNO','V_VNE','V_VA','shared_wdir','shared_wspd','shared_wgust','T_QFU'],
         radios:['V_VOLET'], outs:['p2_gauge','p2_out'], stale:'p2_stale' },
   p3: { fn:'calcTourPiste', label:'Calculer le tour de piste',
         inputs:['T_QFU','T_XNM','T_VG'], radios:['T_MD'],
         outs:['p3_out','p3_diagram'], stale:'p3_stale' },
   p6: { fn:'calcAltitudes', label:'Calculer les altitudes',
-        inputs:['A_ALT','A_FL','A_QNH','A_OAT','shared_obstacle'], radios:['A_MODE'],
+        inputs:['A_ALT','A_FL','A_QNH','A_OAT','shared_obstacle','C_TALT','C_ZREF'], radios:['A_MODE'],
         outs:['p6_bar','p6_out'], stale:'p6_stale' },
   p5: { fn:'calcROCDensite', label:'Calculer ROC et plafond',
         inputs:['R_M','R_PA','R_OAT'], radios:[],
@@ -2265,16 +2320,6 @@ function calcFranchissement(){
   out.innerHTML = html;
   // L'altitude à viser alimente directement le champ d'altitude ci-dessous : le pilote
   // n'a rien à recopier. Sa propre saisie reste prioritaire (bordure orange + ↺).
-  const aalt = document.getElementById('A_ALT');
-  if(aalt && !isOverridden('A_ALT') && ziCible > 0 && String(ziCible) !== aalt.value){
-    aalt.value = ziCible;
-    try{
-      localStorage.setItem('outils2_field_A_ALT', aalt.value);
-      localStorage.setItem('outils2_terrain_seed', aalt.value);
-    }catch(e){}
-    if(typeof refreshStale === 'function') refreshStale('p6');
-  }
-
   setFlight('pc', {
     ziCible, vMin, vMax,
     margeDem: Math.round(MARGE),
@@ -2282,6 +2327,7 @@ function calcFranchissement(){
     marge: Math.round(marge), pente: Math.round(vzMoy / GS * 60),
     vz: Math.round(vzMoy), temps: tMin.toFixed(1), alerts
   });
+  if(typeof syncDerived === 'function') syncDerived();     // altitude et température déduites
   if(typeof updateAltSuggestion === 'function') updateAltSuggestion();
   if(typeof renderDashboard === 'function') renderDashboard();
 }
